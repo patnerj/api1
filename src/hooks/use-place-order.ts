@@ -60,7 +60,8 @@ export function usePlaceOrder() {
     usePrices.getState().addOptimisticPosition(optimisticPos)
     setBusy(side)
 
-    const res = await api.open({ symbol, type: side, lot_size: lots, sl, tp })
+    const tCtx = usePrices.getState().tradingContext
+    const res = await api.open({ symbol, type: side, lot_size: lots, sl, tp, ...(tCtx ? { tournament_id: tCtx.tournamentId } : {}) })
     
     setBusy(null)
     

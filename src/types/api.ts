@@ -1157,3 +1157,16 @@ export interface PvpAnalyticsResponse {
 
 
 
+
+export interface TournamentMine {
+  tournament_id:    number
+  title:            string
+  tournament_status: 'upcoming' | 'active' | 'completed' | 'cancelled'
+  start_date:       string
+  end_date:         string
+  starting_balance: number | string
+  prize_pool:       string
+  account_id:       number
+  starting_equity:  number | string
+  joined_at:        string
+}

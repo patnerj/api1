@@ -228,12 +228,14 @@ export const OrderTicket = memo(function OrderTicket({ compact, account, plan, c
     }
     injectOptimisticPosition(optPos)
 
+    const tCtx = usePrices.getState().tradingContext
     const res = await api.open({
       symbol:   active,
       type:     side,
       lot_size: lotN,
       sl:       slN ?? null,
       tp:       tpN ?? null,
+      ...(tCtx ? { tournament_id: tCtx.tournamentId } : {}),
     })
     setBusy(null)
     if (res.ok && res.data.success) {
@@ -292,6 +294,7 @@ export const OrderTicket = memo(function OrderTicket({ compact, account, plan, c
     }
     injectOptimisticPending(optOrd)
 
+    const tCtx = usePrices.getState().tradingContext
     const res = await api.pendingPlace({
       symbol:       active,
       order_type:   pendingType,
@@ -300,6 +303,7 @@ export const OrderTicket = memo(function OrderTicket({ compact, account, plan, c
       target_price: targetN,
       sl:           slN ?? null,
       tp:           tpN ?? null,
+      ...(tCtx ? { tournament_id: tCtx.tournamentId } : {}),
     })
     setBusy(null)
     if (res.ok && res.data.success) {

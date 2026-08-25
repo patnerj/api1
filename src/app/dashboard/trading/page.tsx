@@ -14,7 +14,7 @@ import { fmtPrice, toNum, fmtUSD, fmtPct } from '@/lib/format'
 import { invalidateFxsim } from '@/lib/fxsim'
 import { playOrderCloseSound } from '@/lib/sound'
 import { symbolDigits } from '@/lib/symbol-meta'
-import type { Account, NoChallengeResp, Position, PendingOrder, ChallengeAccount, ChallengePlan, ChallengeMetrics } from '@/types/api'
+import type { Account, NoChallengeResp, Position, PendingOrder, ChallengeAccount, ChallengePlan, ChallengeMetrics, TournamentMine } from '@/types/api'
 
 import { MarketWatch }        from '@/components/dashboard/trading/market-watch'
 import { ChartPanel }         from '@/components/dashboard/trading/chart-panel'
@@ -63,6 +63,12 @@ export default function TradingTerminalPage() {
   const [freshCheck, setFreshCheck] = useState(false)
   // Escape hatch: if symbols AND positions both keep failing, don't spin forever.
   const [loadTimedOut, setLoadTimedOut] = useState(false)
+  // Tournaments this trader has joined — powers the terminal account switcher.
+  const { data: myTournaments } = useQuery({
+    queryKey: ['tournamentsMine'],
+    queryFn: () => api.tournaments.mine().then(r => (r.ok ? r.data : [])),
+    staleTime: 60_000,
+  })
 
   // Bootstrap symbols once
   useEffect(() => { bootstrapTerm() }, [bootstrapTerm])
@@ -194,14 +200,14 @@ export default function TradingTerminalPage() {
 
   // ── Render layout ────────────────────────────────────────────────────
   return isDesktop
-    ? <DesktopLayout account={acc} openPnL={openPnL} positions={positions} pending={pending} plan={plan} metrics={metrics} onChanged={refreshAll} />
-    : <MobileLayout  account={acc} openPnL={openPnL} positions={positions} pending={pending} plan={plan} metrics={metrics} onChanged={refreshAll} />
+    ? <DesktopLayout account={acc} openPnL={openPnL} positions={positions} pending={pending} plan={plan} metrics={metrics} onChanged={refreshAll} myTournaments={myTournaments} />
+    : <MobileLayout  account={acc} openPnL={openPnL} positions={positions} pending={pending} plan={plan} metrics={metrics} onChanged={refreshAll} myTournaments={myTournaments} />
 }
 
 // ── Desktop ─────────────────────────────────────────────────────────────
 
 function DesktopLayout({
-  account, openPnL, positions, pending, plan, metrics, onChanged,
+  account, openPnL, positions, pending, plan, metrics, onChanged, myTournaments,
 }: {
   account: Account | null
   openPnL: number
@@ -210,6 +216,7 @@ function DesktopLayout({
   plan: ChallengePlan | null
   metrics: ChallengeMetrics | null
   onChanged: () => void
+  myTournaments?: TournamentMine[] | null
 }) {
   const [tab, setTab] = useState<Tab>('positions')
   const mwPanelRef = useRef<PanelImperativeHandle>(null)
@@ -362,6 +369,10 @@ function DesktopLayout({
 
   return (
     <div className="flex flex-col gap-2 h-[calc(100dvh-4.5rem)] min-h-[600px]">
+      {/* Account switcher — Challenge ↔ Tournament trading context */}
+      {myTournaments && myTournaments.length > 0 && (
+        <AccountSwitcher tournaments={myTournaments} />
+      )}
       <AccountStrip account={account} openPnL={openPnL} metrics={metrics} />
       <PanelGroup orientation="horizontal" className="flex-1 min-h-0 w-full rounded-lg">
         {/* Left: market watch */}
@@ -609,6 +620,60 @@ function TabButton({ children, active, onClick }: { children: React.ReactNode; a
 }
 
 /** Live price-feed status — reflects the real WebSocket state. */
+/**
+ * Account switcher — Challenge ↔ Tournament trading contexts. Switching swaps
+ * the entire data context in the prices store (account/positions/pending/orders
+ * all flow to the selected account) and re-fetches immediately.
+ */
+function AccountSwitcher({ tournaments }: { tournaments: TournamentMine[] }) {
+  const ctx = usePrices((s) => s.tradingContext)
+  const [switching, setSwitching] = useState<number | 'challenge' | null>(null)
+
+  const switchTo = async (target: { tournamentId: number; title: string } | null, key: number | 'challenge') => {
+    if (switching !== null) return
+    if ((ctx?.tournamentId ?? 0) === (target?.tournamentId ?? 0)) return
+    setSwitching(key)
+    await usePrices.getState().setTradingContext(target)
+    setSwitching(null)
+  }
+
+  const btn = (active: boolean) =>
+    cn(
+      'px-3 h-7 rounded-md text-xs font-semibold border transition-all focus-ring',
+      active
+        ? 'bg-accent/15 border-accent/50 text-accent'
+        : 'bg-surface border-border text-text-muted hover:text-text hover:border-border-strong',
+      'disabled:opacity-50',
+    )
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-1">
+      <span className="text-3xs text-text-muted font-mono uppercase tracking-wider shrink-0">Trading</span>
+      <button
+        className={btn(!ctx)}
+        disabled={switching !== null}
+        onClick={() => switchTo(null, 'challenge')}
+      >
+        Challenge Account
+      </button>
+      {tournaments.map((t) => (
+        <button
+          key={t.tournament_id}
+          className={btn(ctx?.tournamentId === t.tournament_id)}
+          disabled={switching !== null}
+          onClick={() => switchTo({ tournamentId: t.tournament_id, title: t.title }, t.tournament_id)}
+          title={`Tournament account · start ${fmtUSD(toNum(t.starting_balance), { decimals: 0 })}`}
+        >
+          🏆 {t.title}
+        </button>
+      ))}
+      {switching !== null && (
+        <span className="text-3xs text-text-muted animate-pulse">switching…</span>
+      )}
+    </div>
+  )
+}
+
 function WsBadge() {
   const connected = usePrices((s) => s.connected)
   return (
@@ -627,7 +692,7 @@ function WsBadge() {
 // ── Mobile ──────────────────────────────────────────────────────────────
 
 function MobileLayout({
-  account, openPnL, positions, pending, plan, metrics, onChanged,
+  account, openPnL, positions, pending, plan, metrics, onChanged, myTournaments,
 }: {
   account: Account | null
   openPnL: number
@@ -636,6 +701,7 @@ function MobileLayout({
   plan: ChallengePlan | null
   metrics: ChallengeMetrics | null
   onChanged: () => void
+  myTournaments?: TournamentMine[] | null
 }) {
   type Sheet = null | 'watchlist' | 'order' | 'positions' | 'pending'
   const [sheet, setSheet] = useState<Sheet>(null)
@@ -652,6 +718,9 @@ function MobileLayout({
       {/* Account strip with real-time drawdown telemetry */}
       {account && (
         <div className="px-3 pt-2 shrink-0">
+          {myTournaments && myTournaments.length > 0 && (
+            <div className="mb-1.5"><AccountSwitcher tournaments={myTournaments} /></div>
+          )}
           <AccountStrip account={account} openPnL={openPnL} metrics={metrics} compact />
         </div>
       )}

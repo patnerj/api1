@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { api } from '@/lib/api'
-import { fxsimStream } from '@/lib/fxsim'
+import { fxsimStream, invalidateFxsim } from '@/lib/fxsim'
 import type { PricesMap, PriceTick, Account, Position, PendingOrder } from '@/types/api'
 
 interface PriceState {
@@ -15,6 +15,8 @@ interface PriceState {
   connected: boolean
   source:    'ws' | 'poll' | 'idle'
   hasFetched: boolean
+  /** Active trading context: null = challenge account, set = tournament account. */
+  tradingContext: { tournamentId: number; title: string } | null
 
   start: () => void
   stop:  () => void
@@ -23,6 +25,8 @@ interface PriceState {
   refreshUser: () => Promise<void>
   /** Wipe ALL user data (logout) — shared-computer leak prevention. */
   reset: () => void
+  /** Switch trading context: null = challenge account, set = tournament account. */
+  setTradingContext: (ctx: { tournamentId: number; title: string } | null) => Promise<void>
   addOptimisticPosition: (pos: Position) => void
   injectOptimisticPosition: (pos: Position) => void
   removeOptimisticPosition: (id: number) => void
@@ -75,6 +79,7 @@ export const usePrices = create<PriceState>((set, get) => {
     connected: false,
     source: 'idle',
     hasFetched: false,
+    tradingContext: null,
 
     start: () => {
       refCount++
@@ -91,10 +96,12 @@ export const usePrices = create<PriceState>((set, get) => {
 
           const shouldPollPrices = !get().connected || get().source !== 'ws'
 
+          const ctx = get().tradingContext
+          const tParams = ctx ? { tournament_id: ctx.tournamentId } : undefined
           const [acc, pos, pen] = await Promise.all([
-            api.account(),
-            api.positions(),
-            api.pendingMine(),
+            api.account(tParams),
+            api.positions(tParams),
+            api.pendingMine(tParams),
           ])
 
           // Only overwrite from SUCCESSFUL responses. On a network failure we
@@ -180,7 +187,9 @@ export const usePrices = create<PriceState>((set, get) => {
       startPollingUser()
 
       // One immediate fetch so the first paint isn't blank.
-      Promise.all([api.prices(), api.account(), api.positions(), api.pendingMine()])
+      const ctx0 = get().tradingContext
+      const tParams0 = ctx0 ? { tournament_id: ctx0.tournamentId } : undefined
+      Promise.all([api.prices(), api.account(tParams0), api.positions(tParams0), api.pendingMine(tParams0)])
         .then(([res, acc, pos, pen]) => {
           const patch: Partial<PriceState> = { hasFetched: true }
           if (acc.ok) patch.account = toAccount(acc)
@@ -216,10 +225,12 @@ export const usePrices = create<PriceState>((set, get) => {
     get: (symbol) => get().prices[symbol],
 
     refresh: async () => {
+      const ctx = get().tradingContext
+      const tParams = ctx ? { tournament_id: ctx.tournamentId } : undefined
       const [acc, pos, pen] = await Promise.all([
-        api.account(),
-        api.positions(),
-        api.pendingMine(),
+        api.account(tParams),
+        api.positions(tParams),
+        api.pendingMine(tParams),
       ])
       const patch: Partial<PriceState> = {}
       if (acc.ok) patch.account = toAccount(acc)
@@ -230,6 +241,24 @@ export const usePrices = create<PriceState>((set, get) => {
       if (pen.ok) patch.pending = pen.data
       stableSet(patch)
       return acc.ok
+    },
+
+    /** Switch trading context (challenge ↔ tournament) and immediately
+     *  re-fetch everything for the newly selected account. */
+    setTradingContext: async (ctx) => {
+      const prev = get().tradingContext
+      if (prev?.tournamentId === ctx?.tournamentId && !!prev === !!ctx) return
+      set({
+        tradingContext: ctx,
+        account: null,
+        positions: null,
+        pending: null,
+        optimisticPositions: [],
+      })
+      invalidateFxsim('/account')
+      invalidateFxsim('/positions')
+      invalidateFxsim('/pending-order/my')
+      await get().refresh()
     },
 
     /** Wipe ALL user data on logout — the next login on a shared computer must
@@ -245,6 +274,7 @@ export const usePrices = create<PriceState>((set, get) => {
         connected: false,
         source: 'idle',
         hasFetched: false,
+    tradingContext: null,
       })
     },
 

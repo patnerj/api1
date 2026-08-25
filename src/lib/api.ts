@@ -19,6 +19,7 @@ import type {
   ScalingRules, ScalingQueueItem, ScalingEvent,
   SyndicateRadarSettings, SyndicateCluster,
   PvpMatch, PvpLobbyResponse, PvpLiveStateResponse, PvpAnalyticsResponse,
+  TournamentMine,
 } from '@/types/api'
 
 export { getApiBaseUrl, FXSIM_BASE }
@@ -149,8 +150,9 @@ export const api = {
   tournaments: {
     list:     (params?: { status?: string; search?: string }) => fxsim<import('../types/api').Competition[]>('/tournaments', { query: params, cache: 0 }),
     get:      (id: number) => fxsim<import('../types/api').Competition>(`/tournaments/${id}`, { cache: 0 }),
-    join:     (id: number) => fxsim<{ success: boolean; message: string; participant_id?: number; tournament_id?: number }>(`/tournaments/${id}/join`, { method: 'POST' }),
-    leaderboard: (id: number) => fxsim<{ tournament: import('../types/api').Competition; leaderboard: import('../types/api').LeaderboardRow[] }>(`/tournaments/${id}/leaderboard`, { public: true, cache: 0 }),
+    join:     (id: number) => fxsim<{ success: boolean; message: string; participant_id?: number; tournament_id?: number }>(`/tournaments/${id}/join`, { method: 'POST', retries: 0 }),
+    leaderboard: (id: number) => fxsim<{ tournament: import('../types/api').Competition; leaderboard: import('../types/api').TournamentParticipant[] }>(`/tournaments/${id}/leaderboard`, { cache: 0 }),
+    mine:     () => fxsim<TournamentMine[]>('/tournaments/mine', { cache: 30_000 }),
   },
   profile: (id: number) => fxsim<{ id: number; name: string; is_funded: boolean; has_passed: boolean; badges: string[]; total_payouts: number }>(`/profile/${id}`, { public: true, cache: 30_000 }),
   affiliateLeaderboard: () => fxsim<Array<{ name: string; earned: number }>>('/stats/affiliate-leaderboard', { public: true, cache: 60_000 }),
@@ -237,7 +239,9 @@ export const api = {
       fxsim<{ success: true }>(`/admin/pending-orders/${id}/reject`, { body: { reason } }),
 
     adjustBalance: (userId: number, accountId: number, amount: number, note: string) =>
-      fxsim<{ success: true; new_balance: number }>('/admin/adjust-balance', { body: { user_id: userId, account_id: accountId, amount, note } }),
+      fxsim<{ success: true; new_balance: number }>('/admin/adjust-balance', { body: { user_id: userId, account_id: accountId, amount, note }, retries: 0 }),
+    walletAdjust: (userId: number, amount: number, note: string) =>
+      fxsim<{ success: true; wallet_balance: number }>('/admin/wallet/adjust', { body: { user_id: userId, amount, note }, retries: 0 }),
     setStatus:    (userId: number, status: string) =>
       fxsim<{ success: boolean; message?: string }>('/admin/set-status', { body: { user_id: userId, status } }),
     overrideRule: (userId: number, payload: any) =>
