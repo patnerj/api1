@@ -207,10 +207,14 @@ export async function fxsim<T = unknown>(
     let attempt = 0
     while (true) {
       const result = await rawFetch<T>(url, method, opts)
+      // 429 is NOT retried: the server is explicitly saying "slow down" and an
+      // immediate retry (counted by the rate limiter as a fresh request)
+      // amplifies into a self-sustaining storm that pins the window at the
+      // limit. Only transient server/network failures are retried.
       const shouldRetry =
         !result.ok &&
         attempt < maxRetries &&
-        (result.status === 429 || (result.status >= 500 && result.status < 600) || result.status === 0)
+        ((result.status >= 500 && result.status < 600) || result.status === 0)
       if (!shouldRetry) return result
 
       // Exponential backoff with jitter: 400ms, 900ms, 1900ms (capped at 4s)

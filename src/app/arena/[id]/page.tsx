@@ -57,7 +57,7 @@ export default function PvpLiveBattleArenaPage() {
       if (!res.ok) throw new Error(res.error || 'Failed to fetch match live state.')
       return res.data
     },
-    refetchInterval: 1500,
+    refetchInterval: 3000,
     enabled: !isNaN(matchId) && matchId > 0,
   })
 

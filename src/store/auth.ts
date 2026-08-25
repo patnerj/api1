@@ -16,13 +16,15 @@ import type { AuthUser } from '@/types/api'
  * with a warning since the middleware tolerates it for /dashboard.
  */
 async function establishSessionSafe(token: string, remember = true): Promise<void> {
+  // 429-aware: the establish call can itself be rate-limited during a burst.
+  // Retry with real backoff — giving up here locks the user out of /dashboard.
   let result = await sessionEstablish(token, remember)
-  if (result === 'failed') {
-    await new Promise((r) => setTimeout(r, 600))
+  for (let i = 0; i < 3 && result === 'failed'; i++) {
+    await new Promise((r) => setTimeout(r, 2500 * (i + 1)))
     result = await sessionEstablish(token, remember)
   }
   if (result === 'failed') {
-    toast.error('Session cookie could not be established — if pages bounce to login, sign in again.')
+    toast.error('Session cookie could not be established — refresh the page to retry.')
   } else if (result === 'legacy') {
     console.warn('[auth] FXSIM_SESSION_SECRET not configured — signed sessions inactive.')
   }
