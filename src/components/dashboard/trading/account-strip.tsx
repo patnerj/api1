@@ -138,34 +138,9 @@ export const AccountStrip = memo(function AccountStrip({ account, openPnL, metri
 
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between px-1">
-        <span className="text-3xs text-text-muted font-mono uppercase tracking-wider">Trading Account Telemetry</span>
-        {feedBadge}
-      </div>
-      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        {visible.map((it, i) => (
-          <motion.div
-            key={it.label}
-            initial={{ opacity: 0, y: 4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, delay: Math.min(i * 0.04, 0.2) }}
-            className={cn(
-              'rounded-md px-2.5 py-2 sm:px-3 border min-w-0',
-              it.emphasize
-                ? 'bg-accent-muted/60 border-accent/30'
-                : 'bg-bg-subtle/60 border-border-subtle',
-            )}
-          >
-            <div className="text-2xs uppercase tracking-wider text-text-muted truncate">{it.label}</div>
-            <div className={cn(
-              'tabular font-semibold text-xs sm:text-sm mt-0.5 truncate',
-              it.tone === 'default' ? '' : it.tone,
-            )}>
-              {it.value}
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      {/* Desktop: tiles row removed — Balance/Equity/Margin/P&L already live in
+          the positions-panel footer; only the unique DD progress bars stay.
+          (Keeps the chart area clean and gives it more room.) */}
       {renderProgressBars()}
     </div>
   )
