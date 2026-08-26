@@ -147,6 +147,10 @@ export default function AnalyticsPage() {
         icon={Activity}
       />
 
+      {switchEntries.length > 0 && (
+        <div className="-mt-4 mb-2"><AccountSwitcher entries={switchEntries} /></div>
+      )}
+
       <StatGrid columns={4}>
         <StatCard label="Win Rate" value={`${full.win_rate.toFixed(1)}%`} icon={Target} tone="info" />
         <StatCard label="Avg R:R" value={adv?.avg_rr ? `1:${adv.avg_rr.toFixed(2)}` : 'N/A'} icon={TrendingUp} tone="accent" />
