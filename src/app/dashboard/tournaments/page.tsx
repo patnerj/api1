@@ -10,7 +10,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Trophy, Users, Calendar, ArrowRight, Loader2, Wallet, CheckCircle2 } from 'lucide-react'
+import { Trophy, Users, Calendar, ArrowRight, Loader2, Wallet, CheckCircle2, Clock } from 'lucide-react'
 import { api } from '@/lib/api'
 import { invalidateFxsim } from '@/lib/fxsim'
 import { usePrices } from '@/store/prices'
@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { fmtUSD, toNum } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import type { Competition } from '@/types/api'
+import type { Competition, PaymentOrder } from '@/types/api'
 
 export default function DashboardTournamentsPage() {
   const router = useRouter()
@@ -35,6 +35,22 @@ export default function DashboardTournamentsPage() {
     queryKey: ['tournaments-mine'],
     queryFn: () => api.tournaments.mine().then(r => (r.ok ? r.data : [])),
   })
+
+  const { data: myOrders = [] } = useQuery({
+    queryKey: ['payment-my-orders'],
+    queryFn: () => api.paymentMyOrders().then(r => (r.ok ? r.data : [])),
+    refetchInterval: 15_000,
+  })
+
+  const pendingOrdersByTournament = new Map<number, PaymentOrder>()
+  for (const o of myOrders) {
+    if ((o.status === 'pending' || o.status === 'submitted') && o.admin_note && o.admin_note.includes('tournament_entry:')) {
+      const m = o.admin_note.match(/tournament_entry:(\d+)/)
+      if (m && m[1]) {
+        pendingOrdersByTournament.set(Number(m[1]), o)
+      }
+    }
+  }
 
   const { data: wallet } = useQuery({
     queryKey: ['wallet'],
@@ -76,18 +92,20 @@ export default function DashboardTournamentsPage() {
   const live = tournaments.filter(t => (t.status ?? '') === 'active')
   const upcoming = tournaments.filter(t => (t.status ?? '') !== 'active')
 
-  const statusBadge = (t: Competition) => {
+  const statusBadge = (t: Competition, pendingOrder?: PaymentOrder) => {
     if (joinedIds.has(t.id)) return <Badge tone="success" size="sm"><CheckCircle2 className="h-3 w-3 mr-1 inline" />Joined</Badge>
+    if (pendingOrder) return <Badge tone="warn" size="sm"><Clock className="h-3 w-3 mr-1 inline" />Payment Pending</Badge>
     if ((t.status ?? '') === 'active') return <Badge tone="accent" size="sm" pulsing>Live now</Badge>
     return <Badge tone="neutral" size="sm">{t.status || 'Upcoming'}</Badge>
   }
 
   const TournamentCard = ({ t }: { t: Competition }) => {
     const joined = joinedIds.has(t.id)
+    const pendingOrder = pendingOrdersByTournament.get(t.id)
     const participants = toNum(t.current_participants)
     const maxP = toNum(t.max_participants)
     return (
-      <Card className={cn('overflow-hidden transition-all', joined ? 'border-success/30' : 'hover:border-accent/40')}>
+      <Card className={cn('overflow-hidden transition-all', joined ? 'border-success/30' : pendingOrder ? 'border-warn/40' : 'hover:border-accent/40')}>
         <CardContent className="p-5 space-y-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -96,7 +114,7 @@ export default function DashboardTournamentsPage() {
               </div>
               <h3 className="font-bold text-text truncate text-lg">{t.title || `Tournament #${t.id}`}</h3>
             </div>
-            {statusBadge(t)}
+            {statusBadge(t, pendingOrder)}
           </div>
 
           <div className="grid grid-cols-3 gap-2.5">
@@ -132,6 +150,12 @@ export default function DashboardTournamentsPage() {
             <Button asChild variant="outline" className="w-full">
               <a href="/dashboard/trading">
                 Trade in terminal <ArrowRight className="h-4 w-4 ml-1" />
+              </a>
+            </Button>
+          ) : pendingOrder ? (
+            <Button asChild variant="outline" className="w-full border-warn/40 hover:bg-warn/10 text-warn font-semibold">
+              <a href={`/checkout?tournament=${t.id}&order=${pendingOrder.id}`}>
+                Payment Pending — Complete / View <ArrowRight className="h-4 w-4 ml-1" />
               </a>
             </Button>
           ) : (
