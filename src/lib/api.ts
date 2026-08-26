@@ -154,6 +154,9 @@ export const api = {
     leaderboard: (id: number) => fxsim<{ tournament: import('../types/api').Competition; leaderboard: import('../types/api').TournamentParticipant[] }>(`/tournaments/${id}/leaderboard`, { cache: 0 }),
     mine:     () => fxsim<TournamentMine[]>('/tournaments/mine', { cache: 30_000 }),
   },
+  wallet: {
+    get: () => fxsim<{ balance: number }>('/wallet', { cache: 15_000 }),
+  },
   profile: (id: number) => fxsim<{ id: number; name: string; is_funded: boolean; has_passed: boolean; badges: string[]; total_payouts: number }>(`/profile/${id}`, { public: true, cache: 30_000 }),
   affiliateLeaderboard: () => fxsim<Array<{ name: string; earned: number }>>('/stats/affiliate-leaderboard', { public: true, cache: 60_000 }),
   // ── Payments ──────────────────────────────────────────────────────────
