@@ -22,9 +22,14 @@ export default function DashboardError({
         <AlertCircle className="h-8 w-8" />
       </div>
       <h2 className="text-2xl font-bold tracking-tight mb-2">Something went wrong</h2>
-      <p className="text-text-muted max-w-md mb-8">
+      <p className="text-text-muted max-w-md mb-4">
         We encountered an unexpected error while loading this page. Our team has been notified.
       </p>
+      {/* DEBUG: surface the actual error so it can be reported — remove before public launch */}
+      <pre className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg p-3 max-w-xl overflow-x-auto mb-6 whitespace-pre-wrap text-left">
+        {error?.message || 'Unknown error'}
+        {error?.digest ? `\ndigest: ${error.digest}` : ''}
+      </pre>
       <div className="flex gap-4">
         <Button onClick={() => window.location.reload()} variant="outline">
           Reload Page

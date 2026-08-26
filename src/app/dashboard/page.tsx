@@ -9,6 +9,9 @@ import confetti from 'canvas-confetti'
 import { api } from '@/lib/api'
 import { useAuth } from '@/store/auth'
 import { useAccountQuery, useChallengeMyQuery, useChallengeMetricsQuery, useHistoryQuery, useKycQuery } from '@/hooks/useApi'
+import { AccountSwitcher, buildSwitchEntries } from '@/components/dashboard/trading/account-switcher'
+import { useQuery } from '@tanstack/react-query'
+import { usePrices } from '@/store/prices'
 import { useQueryClient } from '@tanstack/react-query'
 import { fmtUSD, fmtPct, toNum, pnlClass, statusLabel, statusTone, timeAgo } from '@/lib/format'
 import type {
@@ -47,6 +50,12 @@ export default function DashboardOverview() {
 
   const { data: account, isPending: isPendingAccount } = useAccountQuery()
   const { data: rawChallenges, isPending: isPendingChallenges } = useChallengeMyQuery()
+  const { data: myTournaments = [] } = useQuery({
+    queryKey: ['tournaments-mine'],
+    queryFn: () => api.tournaments.mine().then(r => (r.ok ? r.data : [])),
+    staleTime: 60_000,
+  })
+  const switchEntries = buildSwitchEntries((rawChallenges ?? []) as any, myTournaments)
   const challenges = Array.isArray(rawChallenges) ? rawChallenges : (rawChallenges ? [] : null)
   
   const active = challenges?.find((c) => c.status === 'active') || challenges?.[0] || null
@@ -117,6 +126,11 @@ export default function DashboardOverview() {
           ) : undefined
         }
       />
+
+      {/* Multi-account switcher — challenges + tournaments (stats follow selection) */}
+      {switchEntries.length > 1 && (
+        <AccountSwitcher entries={switchEntries} />
+      )}
 
       {/* Email-not-verified banner */}
       {user && !user.email_verified && (
