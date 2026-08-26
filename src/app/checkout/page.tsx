@@ -271,6 +271,7 @@ function CheckoutInner() {
     setLoading(false)
     if (res.ok && res.data.order_id) {
       setOrderId(res.data.order_id)
+      invalidateFxsim('/payment/my-orders')
       setStep('manual')
     } else {
       setError(res.ok ? 'Order creation failed' : res.error)
@@ -288,6 +289,8 @@ function CheckoutInner() {
     const res = await api.paymentSubmitProof(form)
     setLoading(false)
     if (res.ok) {
+      invalidateFxsim('/payment/my-orders')
+      invalidateFxsim('/tournaments/mine')
       setStep('success')
     } else {
       setError(res.error)

@@ -38,19 +38,27 @@ export default function DashboardTournamentsPage() {
 
   const { data: myOrders = [] } = useQuery({
     queryKey: ['payment-my-orders'],
-    queryFn: () => api.paymentMyOrders().then(r => (r.ok ? r.data : [])),
-    refetchInterval: 15_000,
+    queryFn: () => api.paymentMyOrders(true).then(r => (r.ok ? r.data : [])),
+    refetchInterval: 10_000,
+    staleTime: 0,
   })
 
-  const pendingOrdersByTournament = new Map<number, PaymentOrder>()
-  for (const o of myOrders) {
-    if ((o.status === 'pending' || o.status === 'submitted') && o.admin_note && o.admin_note.includes('tournament_entry:')) {
-      const m = o.admin_note.match(/tournament_entry:(\d+)/)
-      if (m && m[1]) {
-        pendingOrdersByTournament.set(Number(m[1]), o)
+  const pendingOrdersByTournament = useMemo(() => {
+    const map = new Map<number, PaymentOrder>()
+    for (const o of myOrders) {
+      const isPending = o.status === 'pending' || o.status === 'submitted'
+      if (!isPending) continue
+      const tid = (o as any).tournament_id != null
+        ? Number((o as any).tournament_id)
+        : o.admin_note?.match(/tournament_entry:(\d+)/)?.[1]
+          ? Number(o.admin_note.match(/tournament_entry:(\d+)/)![1])
+          : null
+      if (tid && !isNaN(tid)) {
+        map.set(tid, o)
       }
     }
-  }
+    return map
+  }, [myOrders])
 
   const { data: wallet } = useQuery({
     queryKey: ['wallet'],
@@ -58,16 +66,19 @@ export default function DashboardTournamentsPage() {
     refetchInterval: 30_000,
   })
 
-  const joinedIds = new Set(mine.map(m => m.tournament_id))
+  const joinedIds = useMemo(() => {
+    return new Set(mine.map(m => Number(m.tournament_id)).filter(n => !isNaN(n)))
+  }, [mine])
 
   const join = async (t: Competition) => {
-    setJoining(t.id)
-    const res = await api.tournaments.join(t.id)
+    const tid = Number(t.id)
+    setJoining(tid)
+    const res = await api.tournaments.join(tid)
     setJoining(null)
     if (res.ok && res.data.success) {
       if (res.data.requires_payment) {
         toast.info('Entry fee checkout required. Opening checkout...')
-        router.push(`/checkout?tournament=${t.id}&order=${res.data.order_id}`)
+        router.push(`/checkout?tournament=${tid}&order=${res.data.order_id}`)
         return
       }
       // Invalidate BOTH cache layers — react-query AND the fxsim request cache
@@ -75,9 +86,10 @@ export default function DashboardTournamentsPage() {
       // a manual refresh).
       invalidateFxsim('/tournaments/mine')
       invalidateFxsim('/tournaments')
+      invalidateFxsim('/payment/my-orders')
       qc.invalidateQueries({ queryKey: ['tournaments-mine'] })
       qc.invalidateQueries({ queryKey: ['tournaments-public'] })
-      invalidateFxsim('/tournaments/mine')
+      qc.invalidateQueries({ queryKey: ['payment-my-orders'] })
       // AUTO-SWITCH: the terminal opens straight on the tournament account —
       // no manual switcher click needed after joining.
       if (res.data.tournament_id) {
@@ -93,15 +105,17 @@ export default function DashboardTournamentsPage() {
   const upcoming = tournaments.filter(t => (t.status ?? '') !== 'active')
 
   const statusBadge = (t: Competition, pendingOrder?: PaymentOrder) => {
-    if (joinedIds.has(t.id)) return <Badge tone="success" size="sm"><CheckCircle2 className="h-3 w-3 mr-1 inline" />Joined</Badge>
+    const tid = Number(t.id)
+    if (joinedIds.has(tid)) return <Badge tone="success" size="sm"><CheckCircle2 className="h-3 w-3 mr-1 inline" />Joined</Badge>
     if (pendingOrder) return <Badge tone="warn" size="sm"><Clock className="h-3 w-3 mr-1 inline" />Payment Pending</Badge>
     if ((t.status ?? '') === 'active') return <Badge tone="accent" size="sm" pulsing>Live now</Badge>
     return <Badge tone="neutral" size="sm">{t.status || 'Upcoming'}</Badge>
   }
 
   const TournamentCard = ({ t }: { t: Competition }) => {
-    const joined = joinedIds.has(t.id)
-    const pendingOrder = pendingOrdersByTournament.get(t.id)
+    const tid = Number(t.id)
+    const joined = joinedIds.has(tid)
+    const pendingOrder = pendingOrdersByTournament.get(tid)
     const participants = toNum(t.current_participants)
     const maxP = toNum(t.max_participants)
     return (
@@ -154,7 +168,7 @@ export default function DashboardTournamentsPage() {
             </Button>
           ) : pendingOrder ? (
             <Button asChild variant="outline" className="w-full border-warn/40 hover:bg-warn/10 text-warn font-semibold">
-              <a href={`/checkout?tournament=${t.id}&order=${pendingOrder.id}`}>
+              <a href={`/checkout?tournament=${tid}&order=${pendingOrder.id}`}>
                 Payment Pending — Complete / View <ArrowRight className="h-4 w-4 ml-1" />
               </a>
             </Button>
@@ -162,7 +176,7 @@ export default function DashboardTournamentsPage() {
             <Button
               className="w-full"
               disabled={joining !== null || (t.status ?? '') !== 'active'}
-              loading={joining === t.id}
+              loading={joining === tid}
               onClick={() => join(t)}
             >
               {toNum(t.entry_fee) > 0

@@ -14,6 +14,7 @@ export default function PublicTournamentArena() {
 
   const [tournament, setTournament] = useState<Competition | null>(null)
   const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([])
+  const [pendingOrder, setPendingOrder] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [registering, setRegistering] = useState(false)
   const [registered, setRegistered] = useState(false)
@@ -25,9 +26,10 @@ export default function PublicTournamentArena() {
   const fetchDetails = async () => {
     try {
       setLoading(true)
-      const [tRes, lRes] = await Promise.all([
+      const [tRes, lRes, oRes] = await Promise.all([
         api.tournaments.get(id),
-        api.tournaments.leaderboard(id)
+        api.tournaments.leaderboard(id),
+        api.paymentMyOrders(true).catch(() => ({ ok: false as const, data: [] }))
       ])
       
       if (tRes.ok) {
@@ -44,6 +46,14 @@ export default function PublicTournamentArena() {
           setLeaderboard((lbData as any).leaderboard)
         }
       }
+      if (oRes.ok && Array.isArray(oRes.data)) {
+        const po = oRes.data.find((o: any) => {
+          if (o.status !== 'pending' && o.status !== 'submitted') return false
+          const tid = (o as any).tournament_id ? Number((o as any).tournament_id) : (o.admin_note?.match(/tournament_entry:(\d+)/)?.[1] ? Number(o.admin_note.match(/tournament_entry:(\d+)/)[1]) : null)
+          return tid === id
+        })
+        setPendingOrder(po || null)
+      }
     } finally {
       setLoading(false)
     }
@@ -54,6 +64,11 @@ export default function PublicTournamentArena() {
     try {
       const res = await api.tournaments.join(id)
       if (res.ok && res.data.success) {
+        if (res.data.requires_payment) {
+          toast.info('Entry fee checkout required. Opening checkout...')
+          router.push(`/checkout?tournament=${id}&order=${res.data.order_id}`)
+          return
+        }
         setRegistered(true)
         toast.success(res.data.message || 'Successfully registered for tournament!')
         fetchDetails()
@@ -143,7 +158,22 @@ export default function PublicTournamentArena() {
                 </div>
               </div>
 
-              {!registered && !isCancelled && !isCompleted && (
+              {pendingOrder && (
+                <div className="space-y-3">
+                  <div className="w-full bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold py-3.5 rounded-xl text-center flex items-center justify-center gap-2 text-sm">
+                    <span className="h-2 w-2 bg-amber-400 rounded-full animate-pulse"></span>
+                    Payment Pending Review
+                  </div>
+                  <button 
+                    onClick={() => router.push(`/checkout?tournament=${id}&order=${pendingOrder.id}`)}
+                    className="w-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-base"
+                  >
+                    Payment Pending — Complete / View
+                    <ArrowRight className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+              {!pendingOrder && !registered && !isCancelled && !isCompleted && (
                 <button 
                   onClick={handleRegister}
                   disabled={registering}
@@ -153,7 +183,7 @@ export default function PublicTournamentArena() {
                   <ArrowRight className="h-5 w-5" />
                 </button>
               )}
-              {registered && (
+              {!pendingOrder && registered && (
                 <div className="w-full bg-success/20 border border-success/30 text-success font-bold py-4 rounded-xl text-center flex items-center justify-center gap-2">
                   <span className="h-2 w-2 bg-success rounded-full animate-pulse"></span>
                   You are registered

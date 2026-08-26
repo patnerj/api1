@@ -8,13 +8,27 @@ import type { Competition } from '@/types/api'
 
 export default function PublicTournamentsPage() {
   const [tournaments, setTournaments] = useState<Competition[]>([])
+  const [pendingOrders, setPendingOrders] = useState<Map<number, any>>(new Map())
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
-        const res = await api.tournaments.list()
+        const [res, ord] = await Promise.all([
+          api.tournaments.list(),
+          api.paymentMyOrders(true).catch(() => ({ ok: false as const, data: [] }))
+        ])
         if (res.ok) setTournaments(res.data)
+        if (ord.ok && Array.isArray(ord.data)) {
+          const map = new Map<number, any>()
+          for (const o of ord.data) {
+            if (o.status === 'pending' || o.status === 'submitted') {
+              const tid = (o as any).tournament_id ? Number((o as any).tournament_id) : (o.admin_note?.match(/tournament_entry:(\d+)/)?.[1] ? Number(o.admin_note.match(/tournament_entry:(\d+)/)![1]) : null)
+              if (tid && !isNaN(tid)) map.set(tid, o)
+            }
+          }
+          setPendingOrders(map)
+        }
       } finally {
         setLoading(false)
       }
@@ -26,9 +40,19 @@ export default function PublicTournamentsPage() {
   const upcomingTournaments = tournaments.filter(t => t.status === 'upcoming')
   const completedTournaments = tournaments.filter(t => t.status === 'completed')
 
-  const renderCard = (t: Competition, isActive: boolean) => (
-    <div key={t.id} className="relative group rounded-2xl border border-border bg-surface p-6 overflow-hidden hover:shadow-lg transition-all duration-300">
-      {isActive && (
+  const renderCard = (t: Competition, isActive: boolean) => {
+    const tid = Number(t.id)
+    const pendingOrder = pendingOrders.get(tid)
+    return (
+    <div key={t.id} className={`relative group rounded-2xl border ${pendingOrder ? 'border-amber-500/40 bg-surface shadow-amber-500/5' : 'border-border bg-surface'} p-6 overflow-hidden hover:shadow-lg transition-all duration-300`}>
+      {pendingOrder ? (
+        <div className="absolute top-0 right-0 p-4 z-10">
+          <span className="inline-flex items-center rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+            <Clock className="h-3 w-3 mr-1" />
+            Payment Pending
+          </span>
+        </div>
+      ) : isActive ? (
         <>
           <div className="absolute -top-16 -right-16 h-32 w-32 bg-accent/20 rounded-full blur-2xl group-hover:bg-accent/30 transition-all duration-500 animate-pulse" />
           <div className="absolute top-0 right-0 p-4">
@@ -38,16 +62,14 @@ export default function PublicTournamentsPage() {
             </span>
           </div>
         </>
-      )}
-      
-      {!isActive && t.status === 'upcoming' && (
+      ) : !isActive && t.status === 'upcoming' ? (
         <div className="absolute top-0 right-0 p-4">
           <span className="inline-flex items-center rounded-full bg-info/10 px-2.5 py-0.5 text-xs font-semibold text-info">
             <Clock className="h-3 w-3 mr-1" />
             Upcoming
           </span>
         </div>
-      )}
+      ) : null}
 
       <div className="flex items-start gap-4 mb-4">
         <div className={`p-3 rounded-xl ${isActive ? 'bg-accent/10 text-accent' : 'bg-surface-muted text-text-muted'}`}>
@@ -79,20 +101,31 @@ export default function PublicTournamentsPage() {
         <div className="text-sm text-text-muted">
           Ends: {new Date(t.end_date).toLocaleDateString()}
         </div>
-        <Link 
-          href={`/tournaments/${t.id}`}
-          className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors shadow-sm gap-2 ${
-            isActive 
-              ? 'bg-accent text-accent-foreground hover:bg-accent/90' 
-              : 'bg-surface border border-border text-text hover:bg-surface-muted'
-          }`}
-        >
-          {isActive ? 'View Arena' : t.status === 'upcoming' ? 'Pre-Register' : 'View Results'}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        {pendingOrder ? (
+          <Link 
+            href={`/checkout?tournament=${tid}&order=${pendingOrder.id}`}
+            className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition-colors shadow-sm gap-2 bg-amber-500/15 border border-amber-500/40 text-amber-400 hover:bg-amber-500/25"
+          >
+            Payment Pending — Complete / View
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        ) : (
+          <Link 
+            href={`/tournaments/${t.id}`}
+            className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors shadow-sm gap-2 ${
+              isActive 
+                ? 'bg-accent text-accent-foreground hover:bg-accent/90' 
+                : 'bg-surface border border-border text-text hover:bg-surface-muted'
+            }`}
+          >
+            {isActive ? 'View Arena' : t.status === 'upcoming' ? 'Pre-Register' : 'View Results'}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        )}
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
