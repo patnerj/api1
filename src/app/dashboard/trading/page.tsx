@@ -186,7 +186,14 @@ export default function TradingTerminalPage() {
   // Gated on freshCheck: only trust a lock/frozen verdict from data fetched
   // AFTER this mount — stale pre-purchase cache must not flash here.
   if ((noChallenge || readOnly) && freshCheck) {
-    return <TradingLockState accounts={chs} account={acc} challengeStatus={acc?.challenge_status ?? null} />
+    // Switcher ABOVE the lock screen: a frozen/ended account must never
+    // block access to the trader's OTHER accounts.
+    return (
+      <div className="space-y-4">
+        <AccountSwitcher entries={switchEntries} />
+        <TradingLockState accounts={chs} account={acc} challengeStatus={acc?.challenge_status ?? null} />
+      </div>
+    )
   }
 
   // ── Loading state ────────────────────────────────────────────────────

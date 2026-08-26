@@ -175,12 +175,19 @@ export const ChartPanel = memo(function ChartPanel({ compact, positions, onOpenW
     }
     usePrices.getState().injectOptimisticPosition(optPos)
 
+    const tCtx = usePrices.getState().tradingContext
+    const ctxParams = tCtx
+      ? tCtx.kind === 'tournament'
+        ? { tournament_id: tCtx.tournamentId }
+        : tCtx.accountId ? { account_id: tCtx.accountId } : {}
+      : {}
     const res = await api.open({
       symbol: active,
       type,
       lot_size: lotSize,
       sl: calculatedSl,
       tp: null,
+      ...ctxParams,
     })
     setBusy(null)
     if (res.ok && res.data.success) {
