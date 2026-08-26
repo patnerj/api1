@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { Trophy, Users, Calendar, ArrowRight, Loader2, Wallet, CheckCircle2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { invalidateFxsim } from '@/lib/fxsim'
+import { usePrices } from '@/store/prices'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -53,7 +54,13 @@ export default function DashboardTournamentsPage() {
       invalidateFxsim('/tournaments')
       qc.invalidateQueries({ queryKey: ['tournaments-mine'] })
       qc.invalidateQueries({ queryKey: ['tournaments-public'] })
-      toast.success(res.data.message || 'Joined! Your tournament account is ready — switch to it from the terminal.')
+      invalidateFxsim('/tournaments/mine')
+      // AUTO-SWITCH: the terminal opens straight on the tournament account —
+      // no manual switcher click needed after joining.
+      if (res.data.tournament_id) {
+        await usePrices.getState().setTradingContext({ kind: 'tournament', tournamentId: res.data.tournament_id, title: t.title || `Tournament #${t.id}` })
+      }
+      toast.success('Joined! Terminal switched to your tournament account.')
     } else {
       toast.error(res.ok ? (res.data.message || 'Join failed') : res.error)
     }
