@@ -7,7 +7,8 @@ import {
   DollarSign, Percent, Check, Ban, Play, ArrowUpRight, 
   Sparkles, Layers, Sliders, ShieldCheck, CheckCircle2,
   Calendar, ExternalLink, RefreshCw, Send, ArrowRight, UserCheck,
-  Palette, Award, QrCode, Save, RotateCcw
+  Palette, Award, QrCode, Save, RotateCcw,
+  Monitor, Smartphone, Sun, Moon, Wifi, Battery, ChevronLeft
 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -23,6 +24,7 @@ import { DataTable } from '@/components/ui/DataTable'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { toast } from 'sonner'
+import { cn } from '@/lib/cn'
 
 // Theme Color Presets mapped from Whitelabel Design System
 const THEME_COLOR_PRESETS = [
@@ -115,6 +117,8 @@ export default function MarketingHubPage() {
     message: `Dear {trader_name},\n\nWe have updated our risk execution engine and account scaling perks. Your login ID is {login_id} and current simulated account balance is {account_balance}.\n\nPlease ensure your trading strategy adheres to consistency guardrails.\n\nBest regards,\nPropFirm Risk Desk`,
   })
 
+  const [broadcastPreviewDevice, setBroadcastPreviewDevice] = useState<'desktop' | 'mobile'>('desktop')
+  const [broadcastPreviewTheme, setBroadcastPreviewTheme] = useState<'dark' | 'light'>('dark')
   const [isSendingBroadcast, setIsSendingBroadcast] = useState(false)
   const [broadcastSentResult, setBroadcastSentResult] = useState<{
     sent: number
@@ -1487,160 +1491,415 @@ export default function MarketingHubPage() {
 
       {/* ── TAB 4: TRADER EMAIL BROADCAST CENTER ──────────────────────────── */}
       {activeTab === 'broadcast' && (
-        <div className="space-y-6 max-w-4xl">
-          <Card className="bg-[#111827] border-[#1F2937]">
-            <CardHeader className="border-b border-[#1F2937]/60 pb-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base text-gray-100 flex items-center gap-2">
-                  <Send className="h-4 w-4 text-emerald-400" />
-                  Trader Email Broadcast Engine
-                </CardTitle>
-                <Badge tone="accent" size="sm">Mass Communication</Badge>
-              </div>
-              <CardDescription className="text-xs text-gray-400">
-                Dispatch platform announcements, rules updates, and trading announcements to targeted trader cohorts.
-              </CardDescription>
-            </CardHeader>
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-start">
+          
+          {/* ── LEFT COLUMN: BROADCAST COMPOSER ENGINE ── */}
+          <div className="xl:col-span-6 space-y-6">
+            <Card className="bg-[#111827] border-[#1F2937]">
+              <CardHeader className="border-b border-[#1F2937]/60 pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base text-gray-100 flex items-center gap-2">
+                    <Send className="h-4 w-4 text-emerald-400" />
+                    Trader Email Broadcast Engine
+                  </CardTitle>
+                  <Badge tone="accent" size="sm">Mass Communication</Badge>
+                </div>
+                <CardDescription className="text-xs text-gray-400">
+                  Dispatch platform announcements, rules updates, and trading announcements to targeted trader cohorts.
+                </CardDescription>
+              </CardHeader>
 
-            <CardContent className="p-6 space-y-6">
-              
-              {/* Audience Selector & Subject */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="broadcast-audience">Target Cohort Audience</Label>
-                  <select
-                    id="broadcast-audience"
-                    value={broadcastForm.audience}
-                    onChange={(e) => setBroadcastForm({ ...broadcastForm, audience: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl border border-[#1F2937] bg-[#0B0F19] text-gray-200 text-xs focus:outline-none focus:border-emerald-500 font-medium"
-                  >
-                    <option value="all">🌐 All Registered Traders</option>
-                    <option value="active">⚡ Active Phase 1 & 2 Traders</option>
-                    <option value="funded">💎 Funded Traders Only</option>
-                    <option value="breached">⚠️ Breached / Inactive Traders</option>
-                  </select>
+              <CardContent className="p-6 space-y-6">
+                
+                {/* Audience Selector & Subject */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="broadcast-audience">Target Cohort Audience</Label>
+                    <select
+                      id="broadcast-audience"
+                      value={broadcastForm.audience}
+                      onChange={(e) => setBroadcastForm({ ...broadcastForm, audience: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-[#1F2937] bg-[#0B0F19] text-gray-200 text-xs focus:outline-none focus:border-emerald-500 font-medium"
+                    >
+                      <option value="all">🌐 All Registered Traders</option>
+                      <option value="active">⚡ Active Phase 1 & 2 Traders</option>
+                      <option value="funded">💎 Funded Traders Only</option>
+                      <option value="breached">⚠️ Breached / Inactive Traders</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label htmlFor="broadcast-subject">Email Subject Line</Label>
+                    <Input
+                      id="broadcast-subject"
+                      placeholder="e.g. Important Update Regarding Market Liquidity & Holiday Hours"
+                      value={broadcastForm.subject}
+                      onChange={(e) => setBroadcastForm({ ...broadcastForm, subject: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label htmlFor="broadcast-subject">Email Subject Line</Label>
-                  <Input
-                    id="broadcast-subject"
-                    placeholder="e.g. Important Update Regarding Market Liquidity & Holiday Hours"
-                    value={broadcastForm.subject}
-                    onChange={(e) => setBroadcastForm({ ...broadcastForm, subject: e.target.value })}
+                {/* Template Tags Ribbon */}
+                <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1F2937] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+                      1-Click Dynamic Personalization Tags
+                    </span>
+                    <span className="text-[10px] text-gray-500 font-mono">Click to insert at cursor</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => insertTemplateTag(' {trader_name}')}
+                      className="px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-[#1F2937] text-emerald-400 font-mono text-[11px] font-semibold transition-colors"
+                    >
+                      + &#123;trader_name&#125;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertTemplateTag(' {login_id}')}
+                      className="px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-[#1F2937] text-blue-400 font-mono text-[11px] font-semibold transition-colors"
+                    >
+                      + &#123;login_id&#125;
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertTemplateTag(' {account_balance}')}
+                      className="px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-[#1F2937] text-amber-400 font-mono text-[11px] font-semibold transition-colors"
+                    >
+                      + &#123;account_balance&#125;
+                    </button>
+                  </div>
+                </div>
+
+                {/* Rich Message Body */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="broadcast-body">Message Body (Rich Text / HTML / Plaintext)</Label>
+                  <Textarea
+                    id="broadcast-body"
+                    rows={8}
+                    placeholder="Compose announcement message here..."
+                    value={broadcastForm.message}
+                    onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
+                    className="font-sans text-xs leading-relaxed"
                   />
                 </div>
-              </div>
 
-              {/* Template Tags Ribbon */}
-              <div className="p-3 bg-[#0B0F19] rounded-xl border border-[#1F2937] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-                    1-Click Dynamic Personalization Tags
-                  </span>
-                  <span className="text-[10px] text-gray-500 font-mono">Click to insert at cursor</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => insertTemplateTag(' {trader_name}')}
-                    className="px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-[#1F2937] text-emerald-400 font-mono text-[11px] font-semibold transition-colors"
-                  >
-                    + &#123;trader_name&#125;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertTemplateTag(' {login_id}')}
-                    className="px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-[#1F2937] text-blue-400 font-mono text-[11px] font-semibold transition-colors"
-                  >
-                    + &#123;login_id&#125;
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertTemplateTag(' {account_balance}')}
-                    className="px-2.5 py-1 rounded-lg bg-[#111827] hover:bg-slate-800 border border-[#1F2937] text-amber-400 font-mono text-[11px] font-semibold transition-colors"
-                  >
-                    + &#123;account_balance&#125;
-                  </button>
-                </div>
-              </div>
-
-              {/* Rich Message Body */}
-              <div className="space-y-1.5">
-                <Label htmlFor="broadcast-body">Message Body (Rich Text / HTML / Plaintext)</Label>
-                <Textarea
-                  id="broadcast-body"
-                  rows={7}
-                  placeholder="Compose announcement message here..."
-                  value={broadcastForm.message}
-                  onChange={(e) => setBroadcastForm({ ...broadcastForm, message: e.target.value })}
-                  className="font-sans text-xs leading-relaxed"
-                />
-              </div>
-
-              {/* Live Trader Email Preview Card */}
-              <div className="space-y-2 pt-2 border-t border-[#1F2937]/60">
-                <Label className="text-xs text-gray-400">Live Render Preview (Obsidian Trader Theme)</Label>
-                <div className="p-5 rounded-xl border border-[#1F2937] bg-[#0B0F19] space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#1F2937]/70 pb-3">
+                {/* Delivery Receipt & Statistics */}
+                {broadcastSentResult && (
+                  <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded bg-emerald-500 flex items-center justify-center text-slate-950 font-bold text-xs">
-                        P
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                      <div>
+                        <p className="font-bold text-white">{broadcastSentResult.message}</p>
+                        <p className="text-[11px] text-emerald-400/80 font-mono">Dispatched to cohort: {broadcastSentResult.audience.toUpperCase()}</p>
                       </div>
-                      <span className="text-xs font-bold text-white">PropFirm Official Notification</span>
                     </div>
-                    <span className="text-[10px] text-gray-500 font-mono">To: Alexander V. (demo@trader.io)</span>
+                    <Badge tone="success" size="sm" className="font-mono">
+                      {broadcastSentResult.sent} Sent
+                    </Badge>
                   </div>
-                  
-                  <div className="space-y-2 text-xs text-gray-200 leading-relaxed whitespace-pre-wrap">
-                    <div className="font-bold text-sm text-white mb-2">{broadcastForm.subject || 'Subject'}</div>
-                    {broadcastForm.message
-                      .replace(/{trader_name}/g, 'Alexander V.')
-                      .replace(/{login_id}/g, 'FX-88402')
-                      .replace(/{account_balance}/g, '$100,000.00')}
+                )}
+
+              </CardContent>
+
+              <CardFooter className="border-t border-[#1F2937]/60 p-4 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  Queued through high-deliverability SMTP pipelines
+                </span>
+                <Button
+                  variant="primary"
+                  onClick={handleSendBroadcast}
+                  loading={isSendingBroadcast}
+                  className="gap-2 shadow-emerald-500/20"
+                >
+                  <Send className="h-4 w-4" />
+                  Dispatch Email Broadcast
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+
+          {/* ── RIGHT COLUMN: DEDICATED LIVE DEVICE PREVIEW (DESKTOP & MOBILE) ── */}
+          <div className="xl:col-span-6 space-y-4">
+            <Card className="bg-[#111827] border-[#1F2937] overflow-hidden sticky top-6 shadow-xl">
+              <CardHeader className="border-b border-[#1F2937]/60 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm text-gray-100 flex items-center gap-2">
+                      <Eye className="h-4 w-4 text-emerald-400" />
+                      Live Device Email Preview
+                    </CardTitle>
+                    <CardDescription className="text-xs text-gray-400 mt-0.5">
+                      Instant preview across recipient devices & clients
+                    </CardDescription>
                   </div>
 
-                  <div className="pt-3 border-t border-[#1F2937]/50 text-[10px] text-gray-500 flex items-center justify-between font-mono">
-                    <span>Proprietary Trading Firm Inc.</span>
-                    <span>100% Verified Delivery</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Delivery Receipt & Statistics */}
-              {broadcastSentResult && (
-                <div className="p-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 text-xs flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-                    <div>
-                      <p className="font-bold text-white">{broadcastSentResult.message}</p>
-                      <p className="text-[11px] text-emerald-400/80 font-mono">Dispatched to cohort: {broadcastSentResult.audience.toUpperCase()}</p>
+                    {/* Device Selector (Desktop vs Mobile) */}
+                    <div className="inline-flex p-0.5 rounded-xl bg-[#0B0F19] border border-[#1F2937]">
+                      <button
+                        type="button"
+                        onClick={() => setBroadcastPreviewDevice('desktop')}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5",
+                          broadcastPreviewDevice === 'desktop'
+                            ? "bg-emerald-500 text-slate-950 shadow-sm"
+                            : "text-gray-400 hover:text-white"
+                        )}
+                      >
+                        <Monitor className="h-3.5 w-3.5" />
+                        Desktop
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBroadcastPreviewDevice('mobile')}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5",
+                          broadcastPreviewDevice === 'mobile'
+                            ? "bg-emerald-500 text-slate-950 shadow-sm"
+                            : "text-gray-400 hover:text-white"
+                        )}
+                      >
+                        <Smartphone className="h-3.5 w-3.5" />
+                        Mobile
+                      </button>
+                    </div>
+
+                    {/* Inbox Theme Mode Switcher */}
+                    <div className="inline-flex p-0.5 rounded-xl bg-[#0B0F19] border border-[#1F2937]">
+                      <button
+                        type="button"
+                        onClick={() => setBroadcastPreviewTheme(broadcastPreviewTheme === 'dark' ? 'light' : 'dark')}
+                        className="px-2.5 py-1.5 text-xs font-medium rounded-lg text-gray-400 hover:text-white flex items-center gap-1.5 transition-colors"
+                        title={broadcastPreviewTheme === 'dark' ? 'Switch to Light Inbox' : 'Switch to Dark Inbox'}
+                      >
+                        {broadcastPreviewTheme === 'dark' ? (
+                          <>
+                            <Moon className="h-3.5 w-3.5 text-blue-400" />
+                            <span className="text-[11px] font-mono">Dark</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sun className="h-3.5 w-3.5 text-amber-400" />
+                            <span className="text-[11px] font-mono">Light</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-                  <Badge tone="success" size="sm" className="font-mono">
-                    {broadcastSentResult.sent} Sent
-                  </Badge>
                 </div>
-              )}
+              </CardHeader>
 
-            </CardContent>
+              <CardContent className="p-4 sm:p-6 bg-[#080C14]/80 min-h-[580px] flex items-center justify-center overflow-x-hidden">
+                {broadcastPreviewDevice === 'desktop' ? (
+                  /* ── DESKTOP CLIENT FRAME ── */
+                  <div className={cn(
+                    "w-full rounded-2xl border shadow-2xl overflow-hidden transition-all duration-300",
+                    broadcastPreviewTheme === 'dark' 
+                      ? "bg-[#0B0F19] border-[#1F2937] text-gray-100" 
+                      : "bg-white border-gray-200 text-gray-900"
+                  )}>
+                    {/* OS / App Window Title Bar */}
+                    <div className={cn(
+                      "px-4 py-2.5 border-b flex items-center justify-between text-xs font-mono select-none",
+                      broadcastPreviewTheme === 'dark'
+                        ? "bg-[#111827] border-[#1F2937] text-gray-400"
+                        : "bg-gray-100 border-gray-200 text-gray-600"
+                    )}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded-full bg-[#EF4444]/90 inline-block"></span>
+                        <span className="h-3 w-3 rounded-full bg-[#F59E0B]/90 inline-block"></span>
+                        <span className="h-3 w-3 rounded-full bg-[#10B981]/90 inline-block"></span>
+                      </div>
+                      <span className="font-semibold text-[11px] truncate max-w-[200px]">PropFirm Mail — Inbox</span>
+                      <div className="text-[10px] opacity-70">Desktop View</div>
+                    </div>
 
-            <CardFooter className="border-t border-[#1F2937]/60 p-4 flex items-center justify-between">
-              <span className="text-xs text-gray-500">
-                Messages are queued through high-deliverability SMTP pipelines
-              </span>
-              <Button
-                variant="primary"
-                onClick={handleSendBroadcast}
-                loading={isSendingBroadcast}
-                className="gap-2 shadow-emerald-500/20"
-              >
-                <Send className="h-4 w-4" />
-                Dispatch Email Broadcast
-              </Button>
-            </CardFooter>
-          </Card>
+                    {/* Mail Metadata Header */}
+                    <div className={cn(
+                      "p-4 border-b space-y-2",
+                      broadcastPreviewTheme === 'dark' ? "border-[#1F2937]/70 bg-[#0E1524]" : "border-gray-100 bg-gray-50/80"
+                    )}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shrink-0">
+                            P
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("font-bold text-xs truncate", broadcastPreviewTheme === 'dark' ? "text-white" : "text-gray-900")}>
+                                PropFirm Official
+                              </span>
+                              <Badge tone="accent" size="sm" className="text-[9px] py-0 px-1.5">Verified</Badge>
+                            </div>
+                            <div className="text-[11px] text-gray-400 font-mono truncate">
+                              &lt;notifications@launchapropfirm.com&gt;
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-gray-400 shrink-0 font-mono">Today, 10:45 AM</span>
+                      </div>
+
+                      <div className="pt-1 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                        <span>To: Alexander V. &lt;demo@trader.io&gt;</span>
+                        <span className="text-emerald-400 flex items-center gap-1 font-sans text-[10px]">
+                          <ShieldCheck className="h-3 w-3" /> Signed & Verified
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Email Body Content */}
+                    <div className="p-6 space-y-5">
+                      <div className={cn(
+                        "font-extrabold text-base tracking-tight",
+                        broadcastPreviewTheme === 'dark' ? "text-white" : "text-gray-900"
+                      )}>
+                        {broadcastForm.subject || '(Subject line)'}
+                      </div>
+
+                      <div className={cn(
+                        "text-xs leading-relaxed whitespace-pre-wrap font-sans",
+                        broadcastPreviewTheme === 'dark' ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {broadcastForm.message
+                          .replace(/{trader_name}/g, 'Alexander V.')
+                          .replace(/{login_id}/g, 'FX-88402')
+                          .replace(/{account_balance}/g, '$100,000.00')}
+                      </div>
+
+                      {/* CTA Button Preview */}
+                      <div className="pt-3">
+                        <button
+                          type="button"
+                          className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 shadow-lg shadow-emerald-500/20"
+                        >
+                          Open Trading Terminal
+                          <ArrowRight className="h-3.5 w-3.5 ml-0.5" />
+                        </button>
+                      </div>
+
+                      {/* Branded Footer */}
+                      <div className={cn(
+                        "pt-6 mt-6 border-t text-[11px] space-y-1.5",
+                        broadcastPreviewTheme === 'dark' ? "border-[#1F2937]/60 text-gray-500" : "border-gray-200 text-gray-400"
+                      )}>
+                        <div className="font-semibold text-gray-400">PropFirm System Platform</div>
+                        <div>This message was sent to Alexander V. as an official trader update.</div>
+                        <div className="text-[10px] opacity-75">© {new Date().getFullYear()} PropFirm Inc. • High Deliverability SMTP Certified</div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── MOBILE SMARTPHONE FRAME ── */
+                  <div className="w-full flex justify-center py-2">
+                    <div className={cn(
+                      "w-[330px] rounded-[42px] border-[6px] shadow-2xl p-2.5 relative transition-all duration-300 select-none",
+                      broadcastPreviewTheme === 'dark'
+                        ? "bg-[#090D16] border-[#1E293B] shadow-black/80"
+                        : "bg-slate-100 border-slate-300 shadow-slate-900/20"
+                    )}>
+                      {/* Dynamic Island / Notch */}
+                      <div className="absolute top-4 left-1/2 -translate-x-1/2 h-5 w-24 bg-black rounded-full z-20 flex items-center justify-end px-2">
+                        <span className="h-2.5 w-2.5 rounded-full bg-[#111827] border border-gray-800"></span>
+                      </div>
+
+                      {/* Mobile Screen Wrapper */}
+                      <div className={cn(
+                        "w-full rounded-[32px] overflow-hidden border transition-colors flex flex-col min-h-[520px] max-h-[580px]",
+                        broadcastPreviewTheme === 'dark'
+                          ? "bg-[#0B0F19] border-[#1F2937]/80 text-gray-100"
+                          : "bg-white border-gray-200 text-gray-900"
+                      )}>
+                        {/* Mobile Status Bar */}
+                        <div className="px-5 pt-3 pb-2 flex items-center justify-between text-[11px] font-semibold text-gray-400">
+                          <span>9:41</span>
+                          <div className="flex items-center gap-1.5">
+                            <Wifi className="h-3 w-3" />
+                            <Battery className="h-3.5 w-3.5" />
+                          </div>
+                        </div>
+
+                        {/* Mobile Mail Top Bar */}
+                        <div className={cn(
+                          "px-3.5 py-2 border-b flex items-center justify-between text-xs",
+                          broadcastPreviewTheme === 'dark' ? "border-[#1F2937]/70 bg-[#0E1524]" : "border-gray-100 bg-gray-50"
+                        )}>
+                          <div className="flex items-center gap-1 text-emerald-400 font-medium text-[11px]">
+                            <ChevronLeft className="h-4 w-4 -ml-1" />
+                            <span>Inbox</span>
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-mono">1 of 12</span>
+                        </div>
+
+                        {/* Mobile Email Header */}
+                        <div className="p-3.5 border-b border-inherit space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="h-7 w-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs shrink-0">
+                                PF
+                              </div>
+                              <div className="min-w-0">
+                                <div className={cn("font-bold text-xs truncate", broadcastPreviewTheme === 'dark' ? "text-white" : "text-gray-900")}>
+                                  PropFirm Official
+                                </div>
+                                <div className="text-[10px] text-gray-400 truncate">notifications@launchapropfirm.com</div>
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-gray-400 shrink-0">10:45 AM</span>
+                          </div>
+                          <div className="text-[10px] text-gray-400 font-mono truncate">
+                            To: Alexander V. (demo@trader.io)
+                          </div>
+                        </div>
+
+                        {/* Mobile Scrollable Email Content */}
+                        <div className="p-3.5 space-y-3 overflow-y-auto flex-1 text-xs">
+                          <div className={cn("font-extrabold text-sm leading-snug", broadcastPreviewTheme === 'dark' ? "text-white" : "text-gray-900")}>
+                            {broadcastForm.subject || '(Subject line)'}
+                          </div>
+
+                          <div className={cn(
+                            "text-[11px] leading-relaxed whitespace-pre-wrap font-sans",
+                            broadcastPreviewTheme === 'dark' ? "text-gray-300" : "text-gray-700"
+                          )}>
+                            {broadcastForm.message
+                              .replace(/{trader_name}/g, 'Alexander V.')
+                              .replace(/{login_id}/g, 'FX-88402')
+                              .replace(/{account_balance}/g, '$100,000.00')}
+                          </div>
+
+                          {/* Mobile CTA */}
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              className="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20"
+                            >
+                              Open Trading Terminal
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+                          </div>
+
+                          {/* Mobile Footer */}
+                          <div className="pt-4 border-t border-inherit text-[9px] text-gray-500 text-center space-y-1">
+                            <div>PropFirm System Announcement</div>
+                            <div>© {new Date().getFullYear()} All rights reserved.</div>
+                          </div>
+                        </div>
+
+                        {/* Bottom Gesture Bar */}
+                        <div className="py-2 flex justify-center">
+                          <div className="w-28 h-1 bg-gray-500/40 rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
         </div>
       )}
 
