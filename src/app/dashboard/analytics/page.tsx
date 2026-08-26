@@ -86,8 +86,10 @@ export default function AnalyticsPage() {
           variant="hero"
           badge={{ label: 'Insights', tone: 'accent' }}
           icon={Activity}
-          actions={<AccountSwitcher entries={switchEntries} />}
         />
+        {switchEntries.length > 0 && (
+          <div className="-mt-2 mb-2"><AccountSwitcher entries={switchEntries} /></div>
+        )}
 
         <Card>
           <CardContent className="p-10 text-center">

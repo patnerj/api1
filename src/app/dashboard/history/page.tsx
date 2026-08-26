@@ -5,19 +5,31 @@ import { motion } from 'framer-motion'
 import { api } from '@/lib/api'
 import { fmtUSD, fmtDate, toNum, pnlClass } from '@/lib/format'
 import type { Trade } from '@/types/api'
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
+import { AccountSwitcher, buildSwitchEntries } from '@/components/dashboard/trading/account-switcher'
+import { usePrices, buildContextParams } from '@/store/prices'
+import { useChallengeMyQuery } from '@/hooks/useApi'
 import { StatCard, StatGrid } from '@/components/ui/stat-card'
 import { Search, ChevronDown, TrendingUp, TrendingDown, BarChart3, Tag, MessageSquare, Save, History, Trophy, Award, DollarSign, Download } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function HistoryPage() {
   const queryClient = useQueryClient()
+
+  const { data: rawChallenges } = useChallengeMyQuery()
+  const { data: myTournaments = [] } = useQuery({
+    queryKey: ['tournaments-mine'],
+    queryFn: () => api.tournaments.mine().then(r => (r.ok ? r.data : [])),
+    staleTime: 60_000,
+  })
+  const tradingCtx = usePrices((s) => s.tradingContext)
+  const hParams = buildContextParams(tradingCtx)
   
   const {
     data,
@@ -28,10 +40,10 @@ export default function HistoryPage() {
     error: queryError,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['history', 'infinite'],
+    queryKey: ['history', 'infinite', hParams?.account_id ?? hParams?.tournament_id ?? 0],
     initialPageParam: null as number | null,
     queryFn: async ({ pageParam }) => {
-      const res = await api.history(pageParam || undefined)
+      const res = await api.history(pageParam || undefined, hParams)
       if (!res.ok) throw new Error(res.error || 'Could not load trade history.')
       return res.data
     },
@@ -177,6 +189,8 @@ export default function HistoryPage() {
     return { wins, losses, total: trades.length, netPnL, winRate }
   }, [trades, serverStats])
 
+  const switchEntries = buildSwitchEntries((rawChallenges ?? []) as any, myTournaments)
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -186,6 +200,9 @@ export default function HistoryPage() {
         icon={History}
         badge={{ label: 'Performance', tone: 'accent' }}
       />
+      {switchEntries.length > 0 && (
+        <div className="-mt-2 mb-2"><AccountSwitcher entries={switchEntries} /></div>
+      )}
 
       {/* Summary Stat Grid */}
       <StatGrid columns={4}>
