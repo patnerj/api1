@@ -99,8 +99,8 @@ export const api = {
   tradeNotesSave:(id: number, data: { note: string; tags: string[]; screenshot_url: string }) => fxsim<{ success: boolean }>(`/trades/${id}/notes`, { method: 'POST', body: data }),
   transactions:  ()              => fxsim<Transaction[]>('/transactions',             { cache: 8_000 }),
   stats:         ()              => fxsim<BasicStats>('/stats',                       { cache: 10_000 }),
-  statsFull:     ()              => fxsim<FullStats | NoChallengeResp>('/stats/full', { cache: 10_000 }),
-  statsAdvanced: ()              => fxsim<AdvancedStats | NoChallengeResp>('/stats/advanced', { cache: 15_000 }),
+  statsFull:     (params?: { account_id?: number; tournament_id?: number }) => fxsim<FullStats | NoChallengeResp>('/stats/full', { query: params, cache: 10_000 }),
+  statsAdvanced: (params?: { account_id?: number; tournament_id?: number }) => fxsim<AdvancedStats | NoChallengeResp>('/stats/advanced', { query: params, cache: 15_000 }),
 
   // ── Pending orders ────────────────────────────────────────────────────
   pendingPlace:  (b: PendingOrderBody) => fxsim<{ success: boolean; message?: string }>('/pending-order/place', { body: b, retries: 0 }),

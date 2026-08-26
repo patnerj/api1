@@ -4,6 +4,9 @@ import { useTheme } from 'next-themes'
 import { api } from '@/lib/api'
 import { fmtUSD, fmtDate } from '@/lib/format'
 import { useQuery } from '@tanstack/react-query'
+import { useChallengeMyQuery } from '@/hooks/useApi'
+import { AccountSwitcher, buildSwitchEntries } from '@/components/dashboard/trading/account-switcher'
+import { usePrices, buildContextParams } from '@/store/prices'
 import type { FullStats, AdvancedStats } from '@/types/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -19,12 +22,22 @@ import { CalendarHeatmap } from '@/components/dashboard/calendar-heatmap'
 export default function AnalyticsPage() {
   const { theme } = useTheme()
   
+  const { data: rawChallenges } = useChallengeMyQuery()
+  const { data: myTournaments = [] } = useQuery({
+    queryKey: ['tournaments-mine'],
+    queryFn: () => api.tournaments.mine().then(r => (r.ok ? r.data : [])),
+    staleTime: 60_000,
+  })
+  const tradingCtx = usePrices((s) => s.tradingContext)
+  const switchEntries = buildSwitchEntries((rawChallenges ?? []) as any, myTournaments)
+  const statsParams = buildContextParams(tradingCtx)
+
   const { data, isPending } = useQuery({
-    queryKey: ['analyticsData'],
+    queryKey: ['analyticsData', statsParams?.account_id ?? statsParams?.tournament_id ?? 0],
     queryFn: async () => {
       const [fRes, aRes] = await Promise.all([
-        api.statsFull(),
-        api.statsAdvanced()
+        api.statsFull(statsParams),
+        api.statsAdvanced(statsParams)
       ])
       
       let error = null
@@ -73,6 +86,7 @@ export default function AnalyticsPage() {
           variant="hero"
           badge={{ label: 'Insights', tone: 'accent' }}
           icon={Activity}
+          actions={<AccountSwitcher entries={switchEntries} />}
         />
 
         <Card>
