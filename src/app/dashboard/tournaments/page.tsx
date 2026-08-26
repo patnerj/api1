@@ -6,7 +6,7 @@
  * Entry fees are charged from the WALLET (never challenge accounts).
  */
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
