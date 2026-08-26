@@ -1763,7 +1763,7 @@ export default function MarketingHubPage() {
                         "text-xs leading-relaxed whitespace-pre-wrap font-sans",
                         broadcastPreviewTheme === 'dark' ? "text-gray-300" : "text-gray-700"
                       )}>
-                        {broadcastForm.message
+                        {(broadcastForm.message || '')
                           .replace(/{trader_name}/g, 'Alexander V.')
                           .replace(/{login_id}/g, 'FX-88402')
                           .replace(/{account_balance}/g, '$100,000.00')}
@@ -1864,7 +1864,7 @@ export default function MarketingHubPage() {
                             "text-[11px] leading-relaxed whitespace-pre-wrap font-sans",
                             broadcastPreviewTheme === 'dark' ? "text-gray-300" : "text-gray-700"
                           )}>
-                            {broadcastForm.message
+                            {(broadcastForm.message || '')
                               .replace(/{trader_name}/g, 'Alexander V.')
                               .replace(/{login_id}/g, 'FX-88402')
                               .replace(/{account_balance}/g, '$100,000.00')}
