@@ -142,7 +142,13 @@ export default function AdminPaymentsPage() {
                   >
                     <Td>
                       <div className="font-medium tabular">#{o.id}</div>
-                      <div className="text-2xs text-text-muted truncate">{oe.plan_name || `Plan #${o.plan_id}`}</div>
+                      {((o as any).order_type === 'tournament' || o.admin_note?.startsWith('tournament_entry:') || oe.plan_name?.startsWith('Tournament:')) ? (
+                        <div className="text-2xs text-accent font-semibold flex items-center gap-1 truncate" title={oe.plan_name || 'Tournament Entry Fee'}>
+                          <span>🏆</span> {oe.plan_name || 'Tournament Entry Fee'}
+                        </div>
+                      ) : (
+                        <div className="text-2xs text-text-muted truncate">{oe.plan_name || `Plan #${o.plan_id}`}</div>
+                      )}
                     </Td>
                     <Td>
                       <div className="font-medium truncate">{oe.user_login || `User #${o.user_id}`}</div>

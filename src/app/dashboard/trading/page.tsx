@@ -157,7 +157,8 @@ export default function TradingTerminalPage() {
   // explicit no_challenge payload AND a 404 (account left null). Without the
   // `loaded` gate the page used to fall through and render the terminal with a
   // null account, leaving the stat cards as skeletons forever.
-  const noChallenge = (!!account && !isAccount(account)) || (loaded && !acc)
+  // Must NOT be true while switching accounts.
+  const noChallenge = !switching && ((!!account && !isAccount(account)) || (loaded && !acc))
 
   // Aggregate open PnL — drives AccountStrip's "P&L" tile
   const openPnL = useMemo(() => {
@@ -180,30 +181,35 @@ export default function TradingTerminalPage() {
     refetchInterval: 15_000,
   })
 
+  // ── Loading state (including account switching) ──────────────────────
+  // Keep the switcher visible so the user can see which account is loading,
+  // but show the spinner instead of falsely flashing the "frozen" screen.
+  if ((switching || !freshCheck || (!symbolsLoaded && positions === null)) && !loadTimedOut) {
+    return (
+      <div className="space-y-4">
+        <AccountSwitcher entries={switchEntries} />
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="flex flex-col items-center gap-3 text-sm text-text-muted">
+            <div className="h-7 w-7 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+            Loading account…
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── No-challenge / frozen state ──────────────────────────────────────
   // read-only = a failed/passed challenge: keep the final snapshot visible but
   // freeze trading. Funded/active accounts trade normally.
   // Gated on freshCheck: only trust a lock/frozen verdict from data fetched
   // AFTER this mount — stale pre-purchase cache must not flash here.
-  if ((noChallenge || readOnly) && freshCheck) {
+  if (!switching && (noChallenge || readOnly) && freshCheck) {
     // Switcher ABOVE the lock screen: a frozen/ended account must never
     // block access to the trader's OTHER accounts.
     return (
       <div className="space-y-4">
         <AccountSwitcher entries={switchEntries} />
         <TradingLockState accounts={chs} account={acc} challengeStatus={acc?.challenge_status ?? null} />
-      </div>
-    )
-  }
-
-  // ── Loading state ────────────────────────────────────────────────────
-  if ((switching || !freshCheck || (!symbolsLoaded && positions === null)) && !loadTimedOut) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="flex flex-col items-center gap-3 text-sm text-text-muted">
-          <div className="h-7 w-7 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-          Loading terminal…
-        </div>
       </div>
     )
   }
@@ -814,9 +820,10 @@ function TradingLockState({ accounts, account, challengeStatus }: {
   account?: Account | null
   challengeStatus?: string | null
 }) {
-  const passed = challengeStatus === 'passed' || !!accounts?.some((a) => a.status === 'passed')
-  const failed = challengeStatus === 'failed' || !!accounts?.some((a) => a.status === 'failed')
-  const funded = challengeStatus === 'funded'
+  const currentCh = account && 'id' in account ? accounts?.find((a) => a.fxsim_account_id === account.id) : null
+  const passed = challengeStatus === 'passed' || currentCh?.status === 'passed' || (!account && !!accounts?.some((a) => a.status === 'passed'))
+  const failed = challengeStatus === 'failed' || currentCh?.status === 'failed' || (!account && !!accounts?.some((a) => a.status === 'failed'))
+  const funded = challengeStatus === 'funded' || currentCh?.status === 'funded'
   const reason: 'no_challenge' | 'phase_passed' | 'challenge_failed' | 'funded' =
     funded ? 'funded'
     : passed ? 'phase_passed'

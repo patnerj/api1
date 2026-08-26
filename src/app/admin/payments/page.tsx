@@ -528,12 +528,23 @@ export default function PaymentsHubPage() {
                 {
                   key: 'trader',
                   header: 'Trader / Account',
-                  render: (o: PaymentOrder) => (
-                    <div>
-                      <span className="font-bold text-white text-xs block">{o.user_email || `User #${o.user_id}`}</span>
-                      <span className="text-[10px] text-gray-500 font-mono">Plan ID: #{o.plan_id}</span>
-                    </div>
-                  ),
+                  render: (o: PaymentOrder) => {
+                    const isTourn = (o as any).order_type === 'tournament' || o.admin_note?.startsWith('tournament_entry:') || (o as any).plan_name?.startsWith('Tournament:')
+                    return (
+                      <div>
+                        <span className="font-bold text-white text-xs block">{o.user_email || `User #${o.user_id}`}</span>
+                        {isTourn ? (
+                          <span className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1 font-mono">
+                            🏆 {(o as any).tournament_title ? `Tournament: ${(o as any).tournament_title}` : (o as any).plan_name || 'Tournament Entry Fee'}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-500 font-mono">
+                            {(o as any).plan_name || `Plan ID: #${o.plan_id}`}
+                          </span>
+                        )}
+                      </div>
+                    )
+                  },
                 },
                 {
                   key: 'amount',
@@ -629,6 +640,14 @@ export default function PaymentsHubPage() {
               <div className="col-span-2">
                 <span className="text-gray-500 block text-[10px] uppercase">Trader Account</span>
                 <span className="font-bold text-gray-200">{selectedOrder.user_email || `Trader #${selectedOrder.user_id}`}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-gray-500 block text-[10px] uppercase">Item / Plan Purchased</span>
+                <span className="font-bold text-emerald-400 flex items-center gap-1.5 text-xs font-mono">
+                  {((selectedOrder as any).order_type === 'tournament' || selectedOrder.admin_note?.startsWith('tournament_entry:'))
+                    ? `🏆 ${(selectedOrder as any).tournament_title ? `Tournament: ${(selectedOrder as any).tournament_title}` : (selectedOrder as any).plan_name || 'Tournament Entry Fee'}`
+                    : ((selectedOrder as any).plan_name || `Challenge Plan #${selectedOrder.plan_id}`)}
+                </span>
               </div>
             </div>
 
