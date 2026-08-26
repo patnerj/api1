@@ -108,7 +108,13 @@ export const usePrices = create<PriceState>((set, get) => {
       // the WS is down.
       const startPollingUser = () => {
         if (pollTimer) return
+        let consecutiveFailures = 0
         const tick = async () => {
+          // Failure backoff: when the server is overloaded/resetting, hammering
+          // it every 4s makes things worse. Skip ticks after consecutive failures.
+          if (consecutiveFailures >= 3) {
+            await new Promise((r) => setTimeout(r, 8000))
+          }
           if (typeof document !== 'undefined' && document.hidden) return
 
           const shouldPollPrices = !get().connected || get().source !== 'ws'
@@ -144,7 +150,12 @@ export const usePrices = create<PriceState>((set, get) => {
             } else {
               patch.connected = false
             }
-          } else if (!acc.ok && !pos.ok && !pen.ok) {
+          }
+
+          const allFailed = !acc.ok && !pos.ok && !pen.ok
+          consecutiveFailures = allFailed ? consecutiveFailures + 1 : 0
+
+          if (allFailed) {
             // WS is nominally "ws" but every user fetch failed — we're offline.
             patch.connected = false
           }
