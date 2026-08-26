@@ -5,6 +5,11 @@ import { api } from '@/lib/api'
 import { fxsimStream, invalidateFxsim } from '@/lib/fxsim'
 import type { PricesMap, PriceTick, Account, Position, PendingOrder } from '@/types/api'
 
+export type TradingContext =
+  | { kind: 'challenge'; accountId?: number; title?: string }
+  | { kind: 'tournament'; tournamentId: number; title: string }
+  | null
+
 interface PriceState {
   prices:    PricesMap
   account:   Account | null
@@ -15,8 +20,12 @@ interface PriceState {
   connected: boolean
   source:    'ws' | 'poll' | 'idle'
   hasFetched: boolean
-  /** Active trading context: null = challenge account, set = tournament account. */
-  tradingContext: { tournamentId: number; title: string } | null
+  /** Active trading context: null = default (latest active challenge),
+   *  challenge+accountId = a specific challenge account (multi-account),
+   *  tournament = a tournament's dedicated account. */
+  tradingContext: TradingContext
+  /** True while a context switch is re-fetching everything. */
+  contextSwitching: boolean
 
   start: () => void
   stop:  () => void
@@ -25,8 +34,8 @@ interface PriceState {
   refreshUser: () => Promise<void>
   /** Wipe ALL user data (logout) — shared-computer leak prevention. */
   reset: () => void
-  /** Switch trading context: null = challenge account, set = tournament account. */
-  setTradingContext: (ctx: { tournamentId: number; title: string } | null) => Promise<void>
+  /** Switch trading context and immediately re-fetch everything. */
+  setTradingContext: (ctx: TradingContext) => Promise<void>
   addOptimisticPosition: (pos: Position) => void
   injectOptimisticPosition: (pos: Position) => void
   removeOptimisticPosition: (id: number) => void
@@ -41,6 +50,13 @@ let refCount     = 0
 const POLL_MS = 4000
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 let reconnectAttempts = 0
+
+export function buildContextParams(ctx: TradingContext): { account_id?: number; tournament_id?: number } | undefined {
+  if (!ctx) return undefined
+  if (ctx.kind === 'tournament') return { tournament_id: ctx.tournamentId }
+  if (ctx.accountId) return { account_id: ctx.accountId }
+  return undefined
+}
 
 function clearPoll() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
@@ -80,6 +96,7 @@ export const usePrices = create<PriceState>((set, get) => {
     source: 'idle',
     hasFetched: false,
     tradingContext: null,
+    contextSwitching: false,
 
     start: () => {
       refCount++
@@ -96,8 +113,7 @@ export const usePrices = create<PriceState>((set, get) => {
 
           const shouldPollPrices = !get().connected || get().source !== 'ws'
 
-          const ctx = get().tradingContext
-          const tParams = ctx ? { tournament_id: ctx.tournamentId } : undefined
+          const tParams = buildContextParams(get().tradingContext)
           const [acc, pos, pen] = await Promise.all([
             api.account(tParams),
             api.positions(tParams),
@@ -187,8 +203,7 @@ export const usePrices = create<PriceState>((set, get) => {
       startPollingUser()
 
       // One immediate fetch so the first paint isn't blank.
-      const ctx0 = get().tradingContext
-      const tParams0 = ctx0 ? { tournament_id: ctx0.tournamentId } : undefined
+      const tParams0 = buildContextParams(get().tradingContext)
       Promise.all([api.prices(), api.account(tParams0), api.positions(tParams0), api.pendingMine(tParams0)])
         .then(([res, acc, pos, pen]) => {
           const patch: Partial<PriceState> = { hasFetched: true }
@@ -225,8 +240,7 @@ export const usePrices = create<PriceState>((set, get) => {
     get: (symbol) => get().prices[symbol],
 
     refresh: async () => {
-      const ctx = get().tradingContext
-      const tParams = ctx ? { tournament_id: ctx.tournamentId } : undefined
+      const tParams = buildContextParams(get().tradingContext)
       const [acc, pos, pen] = await Promise.all([
         api.account(tParams),
         api.positions(tParams),
@@ -247,9 +261,12 @@ export const usePrices = create<PriceState>((set, get) => {
      *  re-fetch everything for the newly selected account. */
     setTradingContext: async (ctx) => {
       const prev = get().tradingContext
-      if (prev?.tournamentId === ctx?.tournamentId && !!prev === !!ctx) return
+      if (JSON.stringify(prev) === JSON.stringify(ctx)) return
+      // contextSwitching keeps the UI on the loading spinner — without it the
+      // nulled account briefly renders the "challenge ended / frozen" screen.
       set({
         tradingContext: ctx,
+        contextSwitching: true,
         account: null,
         positions: null,
         pending: null,
@@ -258,7 +275,11 @@ export const usePrices = create<PriceState>((set, get) => {
       invalidateFxsim('/account')
       invalidateFxsim('/positions')
       invalidateFxsim('/pending-order/my')
-      await get().refresh()
+      try {
+        await get().refresh()
+      } finally {
+        set({ contextSwitching: false })
+      }
     },
 
     /** Wipe ALL user data on logout — the next login on a shared computer must
@@ -275,6 +296,7 @@ export const usePrices = create<PriceState>((set, get) => {
         source: 'idle',
         hasFetched: false,
     tradingContext: null,
+    contextSwitching: false,
       })
     },
 

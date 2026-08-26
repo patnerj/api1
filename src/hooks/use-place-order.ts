@@ -61,7 +61,12 @@ export function usePlaceOrder() {
     setBusy(side)
 
     const tCtx = usePrices.getState().tradingContext
-    const res = await api.open({ symbol, type: side, lot_size: lots, sl, tp, ...(tCtx ? { tournament_id: tCtx.tournamentId } : {}) })
+    const ctxParams = tCtx
+      ? tCtx.kind === 'tournament'
+        ? { tournament_id: tCtx.tournamentId }
+        : tCtx.accountId ? { account_id: tCtx.accountId } : {}
+      : {}
+    const res = await api.open({ symbol, type: side, lot_size: lots, sl, tp, ...ctxParams })
     
     setBusy(null)
     

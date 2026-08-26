@@ -30,7 +30,7 @@ const NAV: NavItem[] = [
   { href: '/dashboard',                label: 'Overview',     icon: LayoutDashboard, queryKey: ['overview'] },
   { href: '/dashboard/trading',        label: 'Trade',         icon: CandlestickChart, badge: 'LIVE', queryKey: ['account'] },
   { href: '/dashboard/challenges',     label: 'Challenges',   icon: Trophy, queryKey: ['challenges'] },
-  { href: '/tournaments',              label: 'Tournaments',  icon: Trophy, badge: 'WIN', queryKey: ['tournaments'] },
+  { href: '/dashboard/tournaments',    label: 'Tournaments',  icon: Trophy, badge: 'WIN', queryKey: ['tournaments'] },
   { href: '/dashboard/history',        label: 'Trade history', icon: History, queryKey: ['history', 'latest'] },
   { href: '/dashboard/analytics',      label: 'Analytics',     icon: BarChart3, badge: 'NEW', queryKey: ['analytics'] },
   { href: '/dashboard/payouts',        label: 'Payouts',      icon: Banknote, queryKey: ['payouts'] },
