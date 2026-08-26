@@ -57,8 +57,17 @@ export default function DashboardOverview() {
   })
   const switchEntries = buildSwitchEntries((rawChallenges ?? []) as any, myTournaments)
   const challenges = Array.isArray(rawChallenges) ? rawChallenges : (rawChallenges ? [] : null)
-  
-  const active = challenges?.find((c) => c.status === 'active') || challenges?.[0] || null
+
+  // Active challenge follows the account switcher when a specific challenge
+  // account is selected; otherwise defaults to the latest active one.
+  const storeCtx = usePrices((s) => s.tradingContext)
+  const active = (() => {
+    if (storeCtx?.kind === 'challenge' && storeCtx.accountId && challenges) {
+      const picked = challenges.find((c) => c.fxsim_account_id === storeCtx.accountId)
+      if (picked) return picked
+    }
+    return challenges?.find((c) => c.status === 'active') || challenges?.[0] || null
+  })()
   
   const { data: metrics, isPending: isPendingMetrics } = useChallengeMetricsQuery(active?.id)
   const { data: recent = null, isPending: isPendingHistory } = useHistoryQuery()

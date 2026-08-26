@@ -61,6 +61,7 @@ export default function TradingTerminalPage() {
   // "no challenge / read_only" payload (from before the purchase completed)
   // never flashes the frozen/lock screen for a second before the real
   // active-challenge data lands.
+  const switching = usePrices((s) => s.contextSwitching)
   const [freshCheck, setFreshCheck] = useState(false)
   // Escape hatch: if symbols AND positions both keep failing, don't spin forever.
   const [loadTimedOut, setLoadTimedOut] = useState(false)
@@ -189,7 +190,6 @@ export default function TradingTerminalPage() {
   }
 
   // ── Loading state ────────────────────────────────────────────────────
-  const switching = usePrices((s) => s.contextSwitching)
   if ((switching || !freshCheck || (!symbolsLoaded && positions === null)) && !loadTimedOut) {
     return (
       <div className="flex items-center justify-center h-[60vh]">

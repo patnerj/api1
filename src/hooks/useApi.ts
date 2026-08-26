@@ -1,5 +1,6 @@
 import { useQuery, type QueryKey } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { buildContextParams, usePrices } from '@/store/prices';
 import { HistoryResp, type ApiResult } from '@/types/api';
 
 // Live data that must stay fresh (account, open positions, risk desk) polls at
@@ -37,7 +38,14 @@ function useApiQuery<T>(
 }
 
 export function useAccountQuery() {
-  return useApiQuery(['account'], () => api.account(), { interval: LIVE_INTERVAL });
+  // Context-aware: follows the account switcher (challenge/tournament selection)
+  const ctx = usePrices((s) => s.tradingContext);
+  const params = buildContextParams(ctx);
+  return useApiQuery(
+    ['account', params?.account_id ?? params?.tournament_id ?? 0],
+    () => api.account(params),
+    { interval: LIVE_INTERVAL },
+  );
 }
 
 export function useChallengeMyQuery() {
