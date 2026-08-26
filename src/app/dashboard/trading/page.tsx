@@ -73,7 +73,7 @@ export default function TradingTerminalPage() {
   })
 
   // Switcher entries: every ACTIVE/FUNDED challenge + every joined tournament.
-  const switchEntries = buildSwitchEntries(chs ?? [], myTournaments ?? [])
+  const switchEntries = buildSwitchEntries(chs ?? [], myTournaments ?? [], true)  // terminal: tradeable accounts only
 
   // Bootstrap symbols once
   useEffect(() => { bootstrapTerm() }, [bootstrapTerm])

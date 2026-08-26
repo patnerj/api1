@@ -68,10 +68,13 @@ export function usePositionsQuery() {
 
 // Disambiguated query key to avoid collision with infinite scroll history page
 export function useHistoryQuery() {
+  // Context-aware: shows the SELECTED account's trades (not all accounts mixed).
+  const ctx = usePrices((s) => s.tradingContext);
+  const hParams = buildContextParams(ctx);
   return useApiQuery(
-    ['history', 'latest'],
+    ['history', hParams?.account_id ?? hParams?.tournament_id ?? 'latest'],
     async () => {
-      const res = await api.history();
+      const res = await api.history(undefined, hParams);
       if (!res.ok) return res;
       return { ok: true as const, status: res.status, data: (res.data as HistoryResp)?.trades || [] };
     },

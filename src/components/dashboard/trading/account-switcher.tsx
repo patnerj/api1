@@ -72,10 +72,14 @@ export function AccountSwitcher({ entries }: { entries: SwitchEntry[] }) {
 export function buildSwitchEntries(
   challenges: Array<{ fxsim_account_id: number; status?: string; plan_name?: string; current_balance?: number | string }>,
   tournaments: Array<{ tournament_id: number; title: string; starting_balance: number | string }>,
+  activeOnly = false,
 ): SwitchEntry[] {
   const entries: SwitchEntry[] = []
   for (const ch of challenges) {
     const st = (ch.status ?? '').toLowerCase()
+    // activeOnly (terminal): only tradeable accounts. Dashboard: all, so a
+    // failed challenge's final stats stay reviewable.
+    if (activeOnly && st !== 'active' && st !== 'funded') continue
     // ALL challenges included — failed/passed appear as view-only entries so
     // the trader can review final stats on the dashboard + analytics.
     const sub = st === 'funded' ? 'Funded'
