@@ -63,7 +63,11 @@ export function Topbar({ onMenuClick = () => {}, role, user: userProp }: TopbarP
     queryFn: async () => {
       if (!user) return null
       const res = adminMode ? await api.admin.notifications() : await api.notifications()
-      if (!res.ok) throw new Error('Failed to fetch notifications')
+      if (!res.ok) {
+        // Failure-safe: a dropped notifications fetch must not crash sections
+        // that iterate/slice the list — return the shaped empty payload.
+        return { notifications: [], unread_count: 0 }
+      }
       return res.data
     },
     enabled: !!user,
