@@ -76,11 +76,16 @@ export function buildSwitchEntries(
   const entries: SwitchEntry[] = []
   for (const ch of challenges) {
     const st = (ch.status ?? '').toLowerCase()
-    if (st !== 'active' && st !== 'funded') continue
+    // ALL challenges included — failed/passed appear as view-only entries so
+    // the trader can review final stats on the dashboard + analytics.
+    const sub = st === 'funded' ? 'Funded'
+      : st === 'failed' ? 'Failed (view only)'
+      : st === 'passed' ? 'Passed (view only)'
+      : fmtUSD(toNum(ch.current_balance), { decimals: 0 })
     entries.push({
       key: `c-${ch.fxsim_account_id}`,
-      label: ch.plan_name ? ch.plan_name : `Challenge #${ch.fxsim_account_id}`,
-      sub: st === 'funded' ? 'Funded account' : fmtUSD(toNum(ch.current_balance), { decimals: 0 }),
+      label: (ch.plan_name ? ch.plan_name : `Challenge #${ch.fxsim_account_id}`) + (st === 'failed' ? ' (Failed)' : ''),
+      sub,
       ctx: { kind: 'challenge', accountId: ch.fxsim_account_id, title: ch.plan_name },
     })
   }
