@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Trophy, Users, Calendar, ArrowRight, Loader2, Wallet, CheckCircle2 } from 'lucide-react'
@@ -21,6 +22,7 @@ import { cn } from '@/lib/cn'
 import type { Competition } from '@/types/api'
 
 export default function DashboardTournamentsPage() {
+  const router = useRouter()
   const qc = useQueryClient()
   const [joining, setJoining] = useState<number | null>(null)
 
@@ -47,6 +49,11 @@ export default function DashboardTournamentsPage() {
     const res = await api.tournaments.join(t.id)
     setJoining(null)
     if (res.ok && res.data.success) {
+      if (res.data.requires_payment) {
+        toast.info('Entry fee checkout required. Opening checkout...')
+        router.push(`/checkout?tournament=${t.id}&order=${res.data.order_id}`)
+        return
+      }
       // Invalidate BOTH cache layers — react-query AND the fxsim request cache
       // (mine is cached 30s; without this the Joined state appears only after
       // a manual refresh).
@@ -135,7 +142,7 @@ export default function DashboardTournamentsPage() {
               onClick={() => join(t)}
             >
               {toNum(t.entry_fee) > 0
-                ? `Join — $${toNum(t.entry_fee)} entry (wallet)`
+                ? `Join — $${toNum(t.entry_fee)} entry`
                 : 'Join free'}
             </Button>
           )}

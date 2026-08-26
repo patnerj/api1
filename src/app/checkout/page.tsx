@@ -45,6 +45,7 @@ function CheckoutInner() {
   const router = useRouter()
   const params = useSearchParams()
   const planId = Number(params.get('plan') ?? 0)
+  const tournamentId = Number(params.get('tournament') ?? 0)
   
   const { user, ready } = useAuth()
   
@@ -69,8 +70,44 @@ function CheckoutInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const urlCouponAttempted = useRef(false)
 
-  // 1. Fetch Plan
+  // 1. Fetch Plan or Tournament
   useEffect(() => {
+    if (tournamentId) {
+      api.tournaments.get(tournamentId).then((res) => {
+        setFetchingPlan(false)
+        if (res.ok && res.data) {
+          const t = res.data
+          setPlan({
+            id: 0,
+            name: t.title || `Tournament #${t.id}`,
+            price: toNum(t.entry_fee),
+            account_size: toNum(t.starting_balance),
+            p1_profit_target: 0,
+            p1_max_dd: 10,
+            p1_daily_dd: 5,
+            p2_profit_target: 0,
+            p2_max_dd: 10,
+            p2_daily_dd: 5,
+            features: [
+              `Prize Pool: ${t.prize_pool || '$10,000'}`,
+              `Starting Balance: $${toNum(t.starting_balance).toLocaleString()}`,
+              'Dedicated Tournament Trading Account',
+              'Automated Enrollment on Payment Approval'
+            ],
+            currency: 'USD',
+          } as unknown as ChallengePlan)
+          const ord = params.get('order')
+          if (ord) {
+            setOrderId(Number(ord))
+            setStep('gateway')
+          }
+        } else {
+          setPlanErr("Tournament could not be found.")
+        }
+      })
+      return
+    }
+
     if (!planId) {
       setPlanErr("No plan selected.")
       setFetchingPlan(false)
@@ -90,7 +127,7 @@ function CheckoutInner() {
         setPlanErr(res.error || "Failed to load plans.")
       }
     })
-  }, [planId])
+  }, [planId, tournamentId, params])
 
   // 2. Coupon from URL
   useEffect(() => {
@@ -199,7 +236,7 @@ function CheckoutInner() {
 
     if (g === 'confirmo') {
       setLoading(true)
-      const res = await api.paymentCreate(plan.id, 'confirmo', couponToSend)
+      const res = await api.paymentCreate(plan.id, 'confirmo', couponToSend, tournamentId || undefined)
       setLoading(false)
       if (res.ok && res.data.payment_url) {
         window.location.href = res.data.payment_url
@@ -211,7 +248,7 @@ function CheckoutInner() {
 
     if (g === 'coinpayments') {
       setLoading(true)
-      const res = await api.paymentCreate(plan.id, 'coinpayments', couponToSend)
+      const res = await api.paymentCreate(plan.id, 'coinpayments', couponToSend, tournamentId || undefined)
       setLoading(false)
       if (res.ok && res.data.payment_url) {
         window.location.href = res.data.payment_url
@@ -230,7 +267,7 @@ function CheckoutInner() {
       return
     }
     setLoading(true)
-    const res = await api.paymentCreate(plan.id, g === 'manual_crypto' ? 'crypto' : g, couponToSend)
+    const res = await api.paymentCreate(plan.id, g === 'manual_crypto' ? 'crypto' : g, couponToSend, tournamentId || undefined)
     setLoading(false)
     if (res.ok && res.data.order_id) {
       setOrderId(res.data.order_id)
@@ -334,7 +371,7 @@ function CheckoutInner() {
             {step === 'review'  && <ReviewStep    key="review"  plan={plan} onNext={() => isFree ? startFree() : setStep('gateway')} loading={loading} isFree={isFree} error={error} coupon={coupon} setCoupon={setCoupon} applyCoupon={applyCoupon} clearCoupon={clearCoupon} couponInfo={couponInfo} couponErr={couponErr} couponBusy={couponBusy} />}
             {step === 'gateway' && <GatewayStep   key="gateway" plan={plan} gateways={gateways} configLoaded={!!config} chooseGateway={chooseGateway} onBack={() => setStep('review')} loading={loading} error={error} amountDue={finalPrice} couponApplied={!!couponInfo} />}
             {step === 'manual'  && <ManualStep    key="manual"  plan={plan} gateway={gateway} config={config} orderId={orderId} proofFile={proofFile} setProof={setProof} txnRef={txnRef} setTxnRef={setTxnRef} onBack={() => setStep('gateway')} onSubmit={submitProof} loading={loading} error={error} amountDue={finalPrice} />}
-            {step === 'success' && <SuccessStep   key="success" />}
+            {step === 'success' && <SuccessStep   key="success" tournamentId={tournamentId} />}
           </AnimatePresence>
         </div>
       </main>
@@ -656,7 +693,7 @@ function ManualStep({
 }
 
 // ── Success ────────────────────────────────────────────────────────────────
-function SuccessStep() {
+function SuccessStep({ tournamentId }: { tournamentId?: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
@@ -677,8 +714,8 @@ function SuccessStep() {
       
       <div className="pt-4">
         <Button asChild size="lg" className="w-full">
-          <Link href="/dashboard">
-            Go to dashboard
+          <Link href={tournamentId ? "/dashboard/tournaments" : "/dashboard"}>
+            {tournamentId ? "Go to tournaments" : "Go to dashboard"}
             <ArrowRight className="h-5 w-5 ml-2" />
           </Link>
         </Button>

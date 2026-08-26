@@ -150,7 +150,7 @@ export const api = {
   tournaments: {
     list:     (params?: { status?: string; search?: string }) => fxsim<import('../types/api').Competition[]>('/tournaments', { query: params, cache: 0 }),
     get:      (id: number) => fxsim<import('../types/api').Competition>(`/tournaments/${id}`, { cache: 0 }),
-    join:     (id: number) => fxsim<{ success: boolean; message: string; participant_id?: number; tournament_id?: number }>(`/tournaments/${id}/join`, { method: 'POST', retries: 0 }),
+    join:     (id: number, opts?: { use_wallet?: boolean; gateway?: string }) => fxsim<{ success: boolean; message: string; requires_payment?: boolean; order_id?: number; entry_fee?: number; tournament_id?: number; title?: string; participant_id?: number; wallet_balance?: number }>(`/tournaments/${id}/join`, { method: 'POST', body: opts, retries: 0 }),
     leaderboard: (id: number) => fxsim<{ tournament: import('../types/api').Competition; leaderboard: import('../types/api').TournamentParticipant[] }>(`/tournaments/${id}/leaderboard`, { cache: 0 }),
     mine:     () => fxsim<TournamentMine[]>('/tournaments/mine', { cache: 30_000 }),
   },
@@ -161,8 +161,8 @@ export const api = {
   affiliateLeaderboard: () => fxsim<Array<{ name: string; earned: number }>>('/stats/affiliate-leaderboard', { public: true, cache: 60_000 }),
   // ── Payments ──────────────────────────────────────────────────────────
   paymentConfig:    ()           => fxsim<PaymentConfig>('/payment/config', { cache: 60_000 }),
-  paymentCreate:    (planId: number, gateway: string, couponCode?: string) =>
-    fxsim<{ success: boolean; message?: string; order_id?: number; amount?: number; original?: number; discount?: number; payment_url?: string }>('/payment/create', { body: { plan_id: planId, gateway, coupon_code: couponCode } }),
+  paymentCreate:    (planId: number, gateway: string, couponCode?: string, tournamentId?: number) =>
+    fxsim<{ success: boolean; message?: string; order_id?: number; amount?: number; original?: number; discount?: number; payment_url?: string }>('/payment/create', { body: { plan_id: planId, tournament_id: tournamentId, gateway, coupon_code: couponCode } }),
   paymentSubmitProof: (form: FormData) =>
     fxsim<{ success: boolean; message?: string }>('/payment/submit-proof', { form, timeout: 60_000 }),
   paymentMyOrders:  (force = false) => fxsim<PaymentOrder[]>('/payment/my-orders', { cache: force ? 0 : 10_000, force }),
