@@ -888,12 +888,16 @@ export default function OperationsHubPage() {
                       <div className="space-y-1">
                         <span className="text-[10px] uppercase font-bold text-gray-400">Feed Secret Key (`feed_key`)</span>
                         <div className="flex items-center gap-1.5 p-2 bg-[#0B0F19] rounded-lg border border-[#1F2937] text-xs font-mono text-emerald-400">
-                          <span className="truncate flex-1">{feedHealth?.ingest_secret || 'asdf1122'}</span>
+                          <span className="truncate flex-1">{feedHealth?.ingest_secret || '••••••••••••'}</span>
                           <button
                             type="button"
                             onClick={() => {
-                              navigator.clipboard.writeText(feedHealth?.ingest_secret || 'asdf1122')
-                              toast.success('Feed secret key copied!')
+                              if (feedHealth?.ingest_secret) {
+                                navigator.clipboard.writeText(feedHealth.ingest_secret)
+                                toast.success('Feed secret key copied!')
+                              } else {
+                                toast.error('Configure feed key in settings first.')
+                              }
                             }}
                             className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors shrink-0"
                             title="Copy Feed Key"
